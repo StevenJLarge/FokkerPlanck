@@ -11,6 +11,7 @@ Last Modified:  January 3rd 2020
 Software:       python 3.7.x (compatible with python 2.x.x and 3.x.x)
 '''
 
+from typing import Optional
 import numpy as np
 import scipy.sparse
 import time
@@ -20,9 +21,13 @@ import time
 class FPE_integrator:
 
     def __init__(
-        self, D, dt, dx, xArray, diffScheme='crank-nicolson',
-        adScheme='lax-wendroff', boundaryCond='hard-wall',
-        splitMethod='strang', output=True, constDiff=True
+        self, D: float, dt: float, dx: float, xArray: float,
+        diffScheme: Optional[str] = 'crank-nicolson',
+        adScheme: Optional[str] = 'lax-wendroff',
+        boundaryCond: Optional[str] = 'hard-wall',
+        splitMethod: Optional[str] = 'strang',
+        output: Optional[bool] = True,
+        constDiff: Optional[bool] = True
     ):
         self.D = D
         self.dx = dx
@@ -407,7 +412,7 @@ class FPE_integrator:
                     # BUG Is this factor of 1/2 supposed to be here?
                     - 0.5 * (fluxFw - fluxRev)
                 )
-                # NOTE Also have factor of 1/2 here (see below)          
+                # NOTE Also have factor of 1/2 here (see below)
                 halfFlux[index+1] = (
                     0.5 * forceFunction(self.xArray[index] + 0.5 * self.dx, forceParams) * halfProb[index+1]
                 )
@@ -514,7 +519,7 @@ class FPE_integrator:
 
         self.prob = newProb
 
- 
+
 class FPE_integrator_2D:
 
     def __init__(
@@ -1036,7 +1041,7 @@ class FPE_integrator_2D:
         prob_mat = np.reshape(self.prob, (self.Nx, self.Ny))
         newProb = np.zeros_like(prob_mat)
 
-        tempdt = self.dt
+        # tempdt = self.dt
         self.dt = deltaT
 
         par_x = forceParams[0]
@@ -1115,7 +1120,7 @@ class FPE_integrator_2D:
         # Update the probability vector
         self.prob = np.reshape(prob_mat, self.Nx * self.Ny)
 
-        tempdt = self.dt
+        # tempdt = self.dt
         self.dt = deltaT
 
     def laxWendroff_lieSplit(self, forceFunc_x, forceFunc_y, forceParams, deltaT):
