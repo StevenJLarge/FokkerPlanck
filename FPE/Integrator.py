@@ -11,7 +11,7 @@ Last Modified:  January 3rd 2020
 Software:       python 3.7.x (compatible with python 2.x.x and 3.x.x)
 '''
 
-from typing import Optional
+from typing import Callable, Optional, Tuple
 import numpy as np
 import scipy.sparse
 import time
@@ -60,7 +60,7 @@ class FPE_integrator:
     def reset(self):
         pass
 
-    def initializeProbability(self, mean, var):
+    def initializeProbability(self, mean: float, var: float):
         self.prob = np.exp(-(0.5 / var) * ((self.xArray - mean)**2))
         self.prob = self.prob / (sum(self.prob) * self.dx)
 
@@ -282,10 +282,12 @@ class FPE_integrator:
                     print("\t\tDense matrix methods preferred...")
                 self.sparTest = False
 
-    def integrate_step_advection(self, forceParams, forceFunction):
+    def integrate_step_advection(
+        self, forceParams: Tuple, forceFunction: Callable
+    ):
         self.advectionUpdate(forceParams, forceFunction, self.dt)
 
-    def integrate_step(self, forceParams, forceFunction):
+    def integrate_step(self, forceParams: Tuple, forceFunction: Callable):
 
         if(self.splitMethod == 'lie'):
             self.advectionUpdate(forceParams, forceFunction, self.dt)
@@ -312,7 +314,10 @@ class FPE_integrator:
             self.diffusionUpdate()
             self.advectionUpdate(forceParams, forceFunction, 0.5 * self.dt)
 
-    def work_step(self, forceParams, forceFunction, energyFunction):
+    def work_step(
+        self, forceParams: Tuple, forceFunction: Callable,
+        energyFunction: Callable
+    ):
         currEnergy = (
             sum(energyFunction(self.xArray, forceParams, 0) * self.prob) * self.dx
         )
@@ -325,7 +330,8 @@ class FPE_integrator:
         self.powerTracker.append((newEnergy - currEnergy) / self.dt)
 
     def work_step2(
-        self, forceParams, forceParams_new, forceFunction, energyFunction
+        self, forceParams: Tuple, forceParams_new: Tuple,
+        forceFunction: Callable, energyFunction: Callable
     ):
         currEnergy = (
             sum(energyFunction(self.xArray, forceParams) * self.prob) * self.dx
@@ -338,7 +344,7 @@ class FPE_integrator:
         self.workTracker.append(self.workAccumulator)
         self.powerTracker.append((newEnergy - currEnergy) / self.dt)
 
-    def flux_step(self, forceParams, forceFunction):
+    def flux_step(self, forceParams: Tuple, forceFunction: Callable):
         self.flux = (
             self.D * forceFunction(self.xArray, forceParams) * self.prob
             - self.D * np.gradient(self.prob)
@@ -360,7 +366,9 @@ class FPE_integrator:
                 bVec = np.matmul(self.BMat, self.prob)
                 self.prob = np.linalg.solve(self.AMat, bVec)
 
-    def advectionUpdate(self, forceParams, forceFunction, deltaT):
+    def advectionUpdate(
+        self, forceParams: Tuple, forceFunction: Callable, deltaT: float
+    ):
         if(self.adScheme == 'lax-wendroff' or self.adScheme == 'lw'):
             self.laxWendroff(forceParams, forceFunction, deltaT)
         if(self.adScheme == 'lax' or self.adScheme == 'l'):
@@ -368,7 +376,7 @@ class FPE_integrator:
         else:
             self.laxWendroff(forceParams, forceFunction, deltaT)
 
-    def check_CFL(self, forceParams, forceFunction):
+    def check_CFL(self, forceParams: Tuple, forceFunction: Callable):
         maxForce = 0
         for index in range(len(self.xArray)):
             tempForce = np.abs(forceFunction(self.xArray[index], forceParams))
@@ -385,7 +393,9 @@ class FPE_integrator:
 
         return returnVal
 
-    def laxWendroff(self, forceParams, forceFunction, deltaT):
+    def laxWendroff(
+        self, forceParams: Tuple, forceFunction: Callable, deltaT: float
+    ):
         halfProb = np.zeros(len(self.prob) + 1)
         halfFlux = np.zeros(len(self.prob) + 1)
         newProb = np.zeros(len(self.prob))
@@ -500,7 +510,7 @@ class FPE_integrator:
 
         self.prob = newProb
 
-    def lax(self, forceParams, forceFunction, deltaT):
+    def lax(self, forceParams: Tuple, forceFunction: Callable, deltaT: float):
         alpha = deltaT / (2 * self.dx)
         newProb = np.zeros(len(self.prob))
 
@@ -523,9 +533,12 @@ class FPE_integrator:
 class FPE_integrator_2D:
 
     def __init__(
-        self, D, dt, dx, dy, xArray, yArray, diffScheme='crank-nicolson',
-        adScheme='lax-wendroff', boundaryCond='hard-wall',
-        splitMethod='strang', output=True, constDiff=True
+        self, D: float, dt: float, dx: float, dy: float, xArray: float,
+        yArray: float, diffScheme: Optional[str] = 'crank-nicolson',
+        adScheme: Optional[str] = 'lax-wendroff',
+        boundaryCond: Optional[str] = 'hard-wall',
+        splitMethod: Optional[str] = 'strang',
+        output: Optional[bool] = True, constDiff: Optional[bool] = True
     ):
         self.D = D
         self.dx = dx
@@ -873,7 +886,10 @@ class FPE_integrator_2D:
                     print("\t\tDense matrix methods preferred...")
                 self.sparTest = False
 
-    def integrate_step(self, forceParams, forceFunction_x, forceFunction_y):
+    def integrate_step(
+        self, forceParams: Tuple, forceFunction_x: Callable,
+        forceFunction_y: Callable
+    ):
         if(self.splitMethod == 'lie'):
             self.advectionUpdate(
                 forceParams, forceFunction_x, forceFunction_y, self.dt
@@ -928,7 +944,10 @@ class FPE_integrator_2D:
                 bVec = np.matmul(self.BMat, self.prob)
                 self.prob = np.linalg.solve(self.AMat, bVec)
 
-    def advectionUpdate(self, forceParams, forceFunc_x, forceFunc_y, deltaT):
+    def advectionUpdate(
+        self, forceParams: Tuple, forceFunc_x: Callable, forceFunc_y: Callable,
+        deltaT: float
+    ):
         # if(self.adScheme=='lax-wendroff' or self.adScheme=='lw'):
         #    self.laxWendroff(forceParams,forceFunction,deltaT)
         # if(self.adScheme=='lax' or self.adScheme=='l'):
@@ -940,7 +959,7 @@ class FPE_integrator_2D:
         #   self.lax_dimSplit(forceParams,forceFunction,deltaT)
         self.laxWendroff_lieSplit(forceFunc_x, forceFunc_y, forceParams, deltaT)
 
-    def lax(self, forceParams, forceFunction, deltaT):
+    def lax(self, forceParams: Tuple, forceFunction: Callable, deltaT: float):
         # TODO TEST LAX METHOD
         """
         This function updates the 2D probability density function using the 2-D lax-step method
@@ -1033,7 +1052,10 @@ class FPE_integrator_2D:
         # Flatten matrix probability and reform it into a single vector
         self.prob = np.reshape(newProb, (self.Nx * self.Ny))
 
-    def lax_lieSplit(self, forceFunc_x, forceFunc_y, forceParams, deltaT):
+    def lax_lieSplit(
+        self, forceFunc_x: Callable, forceFunc_y: Callable, forceParams: Tuple,
+        deltaT: float
+    ):
         """
         This function implements a Lax update of the 2D probability distribution based on a Lie dimensional splitting
         """
@@ -1123,7 +1145,10 @@ class FPE_integrator_2D:
         # tempdt = self.dt
         self.dt = deltaT
 
-    def laxWendroff_lieSplit(self, forceFunc_x, forceFunc_y, forceParams, deltaT):
+    def laxWendroff_lieSplit(
+        self, forceFunc_x: Callable, forceFunc_y: Callable, forceParams: Tuple,
+        deltaT: float
+    ):
         """
         This function performs an update on the advection term based on the
         Lax-Wendroff scheme for a 2D-diffusion, here the forceFunc_x and and
