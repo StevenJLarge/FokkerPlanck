@@ -1,0 +1,97 @@
+\documentclass[15pt]{article}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage{graphicx}
+\usepackage{setspace}
+\usepackage{tikz}
+\usetikzlibrary{backgrounds}
+
+\usepackage{fancyhdr}
+\usepackage{geometry}
+\geometry{margin=1in}
+\usepackage{pgfplots}
+
+%\usepackage[comma,super,sort&compress]{natbib}
+\usepackage{natbib}
+\setlength{\bibsep}{3pt plus 0.5ex}
+\bibliographystyle{unsrt}
+
+\usepackage[colorlinks=true,linkcolor=blue,urlcolor=blue,citecolor=blue]{hyperref}
+
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\textsf{\thepage}}
+\lhead{\textsf{\thesection}}
+\cfoot{\texttt{Steven Large}}
+
+\usepackage{tikz}
+\usepackage{eso-pic}
+
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.4pt}
+
+\newcommand{\bs}[1]{\boldsymbol{#1}}
+\newcommand{\mc}[1]{\mathcal{#1}}
+
+\title{\sf Fokker-Planck equation: Numerical solutions and integration}
+\author{\sf Steven Large}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\pagebreak
+
+\section{Introduction}
+
+% Introduce Fokker-Planck equation as an important equation
+The Fokker-Planck equation is a tremendously important relation in the study of all types of stochastic systems. Starting from the most basic `continuity equation' of stochastic processes---the Chapman-Kolmogorov equation---one can show that, under a set of reasonable assumptions on the continuity and smoothness of the process itself, the 
+% Superset of other important equations
+
+\part{Numerical Integration}
+
+    \section{Numerical integration: general properties}
+    % Explicit and Implicit integration routine and discussion of general properties of numerical integration
+    % Introduce general discretization schemes
+
+    \section{Stability}
+
+    \section{Advection}
+    % Advection terms
+
+    \section{Diffusion}
+    % Diffusion terms
+
+    \section{Fokker-Planck}
+
+
+    \section{Driven Harmonic Trap}
+
+    \subsection{Excess Work in a Translating Track}
+
+    \subsection{Excess Work in a Breathing Trap}
+
+
+    \section{Driven Rotary Machine}
+
+    \subsection{Steady-State Flux}
+
+    \subsection{Precision and Driving Accuracy}
+
+    % Other subsections?
+    \section{Information Erasure}
+
+    \section{Kolmogorov Backwards Equation}
+
+    \subsection{First passage times}
+
+    \subsection{Financial mathematics: Options pricing}
+
+
+\part{Steady-state solutions}
+
+    % Work through this section on relaxation methods
+
+\end{document}
