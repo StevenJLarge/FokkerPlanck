@@ -20,6 +20,9 @@ class BaseIntegrator(ABC):
         splitMethod: str, output: Optional[bool] = False,
         constDiff: Optional[bool] = True
     ):
+        # Validate input parameters
+        self._validateInput(diffScheme, adScheme, boundaryCond, splitMethod)
+
         # Initialize instance variables. For now, this routine supports
         # constant diffusion coefficient integrations (i.e. D is not a tensor)
         self.D = D
@@ -38,12 +41,39 @@ class BaseIntegrator(ABC):
         # operations
         self.sparTest = False
 
+    def _validateInput(
+        self, diffScheme: str, adScheme: str, coundaryCond: str,
+        splitMethod: str
+    ):
+        pass
+
     def initializeGaussianProbability(
         self, mean: Union[float, np.ndarray],
         variance: Union[float, np.ndarray],
         corrMat: Optional[np.ndarray] = None
     ):
         pass
+
+    def _setDiffusionScheme(self):
+        if(self.diffScheme.lower() == "implicit"):
+            if(self.output is True):
+                print("\t\tUsing fully implicit integration scheme...")
+            self.expImp = 1.0
+
+        elif(self.diffScheme.lower() == "explicit"):
+            if(self.output is True):
+                print("\t\tUsing fully explicit integration scheme...")
+            self.expImp = 0.0
+
+        elif(self.diffScheme.lower() == "crank-nicolson"):
+            if(self.output is True):
+                print("\t\tUsing Crank-Nicolson integration scheme...")
+            self.expImp = 0.5
+
+        else:
+            if(self.output is True):
+                print("\t\tInt scheme unknown, using default setting (CN)...")
+            self.expImp = 0.5
 
     def testSparse(self):
         # If constant diffusion matrix, then run reduced calculation (we dont

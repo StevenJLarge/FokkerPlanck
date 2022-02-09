@@ -65,168 +65,95 @@ class FPE_integrator_1D(BaseIntegrator):
     def initDiffusionMatrix(self):
         if(self.output is True):
             print("\n\nInitializing diffusion term integration matrix...\n")
-
-        if(self.diffScheme.lower() == "implicit"):
-            if(self.output is True):
-                print("\t\tUsing fully implicit integration scheme...")
-            self.expImp = 1.0
-
-        elif(self.diffScheme.lower() == "explicit"):
-            if(self.output is True):
-                print("\t\tUsing fully explicit integration scheme...")
-            self.expImp = 0.0
-
-        elif(self.diffScheme.lower() == "crank-nicolson"):
-            if(self.output is True):
-                print("\t\tUsing Crank-Nicolson integration scheme...")
-            self.expImp = 0.5
-
-        else:
-            if(self.output is True):
-                print("\t\tInt scheme unknown, using default setting (CN)...")
-            self.expImp = 0.5
+        # Set parameters for diffusion matrix iteration
+        super()._setDiffusionScheme()
 
         if(self.output is True):
             print("\t\tInitializing integration matrices for diffusion\n")
-
         alpha = self.D * self.dt / (self.dx * self.dx)
         self.AMat = np.zeros((self.N, self.N))
         self.BMat = np.zeros((self.N, self.N))
 
-        for rowIndex in range(self.N):
+        # Initialize boundary columns based on self.BC
+        self._initializeBoundaryTerms(alpha)
 
-            if rowIndex == 0:
-                if(self.BC == 'hard-wall' or self.BC == 'hw'):
-                    print("\t\tUsing hard-wall boundary conditions...")
+        # Initializze bulk matrix terms
+        for rowIndex in range(1, self.N - 1):
+            self.AMat[rowIndex, :] = [
+                1 + 2 * alpha * self.expImp if col == rowIndex
+                else -self.expImp * alpha if col == (rowIndex - 1)
+                else -self.expImp * alpha if col == (rowIndex + 1)
+                else 0 for col in range(self.N)
+            ]
 
-                    self.AMat[rowIndex, :] = [
-                        1 + 2 * alpha if col == 0
-                        else -2 * alpha if col == 1
-                        else 0 for col in range(self.N)
-                    ]
+            self.BMat[rowIndex, :] = [
+                1 - 2 * alpha * (1 - self.expImp) if col == rowIndex
+                else alpha * (1 - self.expImp) if col == (rowIndex - 1)
+                else alpha * (1 - self.expImp) if col == (rowIndex + 1)
+                else 0 for col in range(self.N)
+            ]
 
-                    self.BMat[rowIndex, :] = [
-                        1 if col == 0
-                        else 0 for col in range(self.N)
-                    ]
-
-                elif(self.BC == 'periodic' or self.BC == 'p'):
-                    print("\t\tusing periodic boundary conditions...")
-
-                    self.AMat[rowIndex, :] = [
-                        1 + 2 * alpha * self.expImp if col == 0
-                        else -self.expImp * alpha if col == 1
-                        else -self.expImp * alpha if col == (self.N - 1)
-                        else 0 for col in range(self.N)
-                    ]
-
-                    self.BMat[rowIndex, :] = [
-                        1 - 2 * alpha * (1-self.expImp) if col == 0
-                        else alpha * (1 - self.expImp) if col == 1
-                        else alpha * (1 - self.expImp) if col == (self.N - 1)
-                        else 0 for col in range(self.N)
-                        ]
-
-                elif(self.BC == 'open' or self.BC == 'o'):
-                    print("\t\tusing open domain boundary conditions...")
-
-                    self.AMat[rowIndex, :] = [
-                        1 + 2 * alpha * self.expImp if col == 0
-                        else -self.expImp * alpha if col == 1
-                        else 0 for col in range(self.N)
-                    ]
-
-                    self.BMat[rowIndex, :] = [
-                        1 - 2 * alpha * (1-self.expImp) if col == 0
-                        else alpha * (1 - self.expImp) if col == 1
-                        else 0 for col in range(self.N)
-                    ]
-
-                else:
-                    print("\t\tboundary condition not recognized, using default (hard-wall)...")
-
-                    self.AMat[rowIndex, :] = [
-                        1 + 2 * alpha if col == 0
-                        else -2 * alpha if col == 1
-                        else 0 for col in range(self.N)
-                    ]
-
-                    self.BMat[rowIndex, :] = [
-                        1 if col == 0
-                        else 0 for col in range(self.N)
-                    ]
-
-            elif rowIndex == (self.N - 1):
-
-                if(self.BC == 'hard-wall' or self.BC == 'hw'):
-                    self.AMat[rowIndex, :] = [
-                        1 + 2 * alpha if col == (self.N - 1)
-                        else -2 * alpha if col == (self.N - 2)
-                        else 0 for col in range(self.N)
-                    ]
-
-                    self.BMat[rowIndex, :] = [
-                        1 if col == (self.N - 1)
-                        else 0 for col in range(self.N)
-                    ]
-
-                elif(self.BC == 'periodic' or self.BC == 'p'):
-                    self.AMat[rowIndex, :] = [
-                        1 + 2 * alpha * self.expImp if col == (self.N - 1)
-                        else -self.expImp * alpha if col == (self.N - 2)
-                        else -self.expImp * alpha if col == 0
-                        else 0 for col in range(self.N)
-                    ]
-
-                    self.BMat[rowIndex, :] = [
-                        1 - 2 * alpha * (1 - self.expImp) if col == (self.N - 1)
-                        else alpha * (1 - self.expImp) if col == (self.N - 2)
-                        else alpha * (1 - self.expImp) if col == 0
-                        else 0 for col in range(self.N)
-                    ]
-
-                elif(self.BC == 'open' or self.BC == 'o'):
-                    self.AMat[rowIndex, :] = [
-                        1 + 2 * alpha * self.expImp if col == (self.N - 1)
-                        else -self.expImp * alpha if col == (self.N - 2)
-                        else 0 for col in range(self.N)
-                    ]
-
-                    self.BMat[rowIndex, :] = [
-                        1 - 2 * alpha * (1 - self.expImp) if col == (self.N - 1)
-                        else alpha * (1 - self.expImp) if col == (self.N - 2)
-                        else 0 for col in range(self.N)
-                    ]
-
-                else:
-                    self.AMat[rowIndex, :] = [
-                        1 + 2 * alpha if col == (self.N - 1)
-                        else -2 * alpha if col == (self.N - 1)
-                        else 0 for col in range(self.N)
-                    ]
-
-                    self.BMat[rowIndex, :] = [
-                        1 if col == (self.N - 1)
-                        else 0 for col in range(self.N)
-                    ]
-
-            else:
-                self.AMat[rowIndex, :] = [
-                    1 + 2 * alpha * self.expImp if col == rowIndex
-                    else -self.expImp * alpha if col == (rowIndex - 1)
-                    else -self.expImp * alpha if col == (rowIndex + 1)
-                    else 0 for col in range(self.N)
-                ]
-
-                self.BMat[rowIndex, :] = [
-                    1 - 2 * alpha * (1 - self.expImp) if col == rowIndex
-                    else alpha * (1 - self.expImp) if col == (rowIndex - 1)
-                    else alpha * (1 - self.expImp) if col == (rowIndex + 1)
-                    else 0 for col in range(self.N)
-                ]
-
+        # Calculate 'C' matrix for matmul operation when diffusion is constant
         self.CMat = np.matmul(np.linalg.inv(self.AMat), self.BMat)
+
+        # Test if sparse-matrix iteration steps are faster than normal matrix
+        # multiplication
         self.testSparse()
+
+    def _matrixBoundary_A(self, alpha: float, idx: int):
+
+        if(self.BC == "periodic"):
+            self.AMat[idx, :] = [
+                1 + 2 * alpha * self.expImp if col == 0
+                else -self.expImp * alpha if col == (idx + 1) % self.N
+                else -self.expImp * alpha if col == (idx - 1) % self.N
+                else 0 for col in range(self.N)
+            ]
+
+        elif(self.BC == "open"):
+            self.AMat[idx, :] = [
+                1 + 2 * alpha * self.expImp if col == 0
+                else -self.expImp * alpha if col == abs(idx - 1)
+                else 0 for col in range(self.N)
+            ]
+
+        else:
+            self.AMat[idx, :] = [
+                1 + 2 * alpha if col == idx
+                else -2 * alpha if col == abs(idx - 1)
+                else 0 for col in range(self.N)
+            ]
+
+    def _matrixBoundary_B(self, alpha: float, idx: int):
+        if(self.BC == "periodic"):
+            self.BMat[idx, :] = [
+                1 - 2 * alpha * (1 - self.expImp) if col == idx
+                else alpha * (1 - self.expImp) if col == (idx + 1) % self.N
+                else alpha * (1 - self.expImp) if col == (idx - 1) % self.N
+                else 0 for col in range(self. N)
+            ]
+
+        elif(self.BC == "open"):
+            self.BMat[idx, :] = [
+                1 - 2 * alpha * (1 - self.expImp) if col == idx
+                else alpha * (1 - self.expImp) if col == abs(idx - 1)
+                else 0 for col in range(self.N)
+            ]
+
+        else:
+            self.BMat[idx, :] = [
+                1 if col == idx
+                else 0 for col in range(self.N)
+            ]
+
+    def _initializeBoundaryTerms(self, alpha: float):
+        # Left-side boundary
+        self._matrixBoundary_A(alpha, 0)
+        self._matrixBoundary_B(alpha, 0)
+
+        # Right-side boundary
+        self._matrixBoundary_A(alpha, self.N - 1)
+        self._matrixBoundary_B(alpha, self.N - 1)
 
     def testSparse(self):
         sBMat = scipy.sparse.csr_matrix(self.BMat)
