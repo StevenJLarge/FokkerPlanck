@@ -16,9 +16,10 @@ import numpy as np
 import scipy.sparse
 import time
 # import forceFunctions as ff
+from FPE.base import BaseIntegrator
 
 
-class FPE_integrator:
+class FPE_integrator_1D(BaseIntegrator):
 
     def __init__(
         self, D: float, dt: float, dx: float, xArray: float,
@@ -29,38 +30,35 @@ class FPE_integrator:
         output: Optional[bool] = True,
         constDiff: Optional[bool] = True
     ):
-        self.D = D
+        super().__init__(
+            D, diffScheme, adScheme, boundaryCond, splitMethod, output,
+            constDiff
+        )
         self.dx = dx
         self.dt = dt
 
-        self.diffScheme = diffScheme.lower()
-        self.adScheme = adScheme.lower()
-        self.BC = boundaryCond.lower()
-        self.splitMethod = splitMethod.lower()
-
-        self.output = output
         self.N = len(xArray)
         self.prob = np.ones(self.N) / (self.N * self.dx)
         self.xArray = xArray
-        self.constDiff = constDiff
-        self.sparTest = False
-
-        # ANCHOR new additions: work and power tracking arrays (as well as time)
-        self.workAccumulator = 0
-        self.workTracker = []
-        self.powerTracker = []
-        self.timeTracker = []
-
-        # ANCHOR new additions of total (integrated) flux tracker
-        self.flux = np.zeros(len(xArray))
-        self.fluxTracker = 0
 
         self.initDiffusionMatrix()
 
     def reset(self):
         pass
 
+    def initializePhysicalTrackers(self):
+        # Work and power tracking arrays
+        self.workAccumulator = 0
+        self.workTracker = []
+        self.powerTracker = []
+        self.timeTracker = []
+
+        # Total (integrated) flux tracker
+        self.flux = np.zeros(len(self.xArray))
+        self.fluxTracker = 0
+
     def initializeProbability(self, mean: float, var: float):
+        # ANCHOR port this to parent class
         self.prob = np.exp(-(0.5 / var) * ((self.xArray - mean)**2))
         self.prob = self.prob / (sum(self.prob) * self.dx)
 

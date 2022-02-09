@@ -16,10 +16,27 @@ class BaseIntegratorResult(ABC):
 class BaseIntegrator(ABC):
     # Base class for integrator
     def __init__(
-        self, D: float, diff_scheme: str, ad_scheme: str, split_method: str,
-        output: Optional[bool] = False, constDiff: Optional[bool] = True
+        self, D: float, diffScheme: str, adScheme: str, boundaryCond: str,
+        splitMethod: str, output: Optional[bool] = False,
+        constDiff: Optional[bool] = True
     ):
-        pass
+        # Initialize instance variables. For now, this routine supports
+        # constant diffusion coefficient integrations (i.e. D is not a tensor)
+        self.D = D
+
+        # Instantiate the instance directives
+        self.diffScheme = diffScheme    # Integration scheme for diffusion term
+        self.adScheme = adScheme        # Integration scheme for advection term
+        self.BC = boundaryCond          # Boundary conditions
+        self.splitMethod = splitMethod  # Integator splitting method
+        self.constDiff = constDiff      # Flag for if diffusion matrix is cost
+
+        # Flag for whether or not output will be printed
+        self.output = output
+
+        # Default initial argument for sparse method utilization in matrix
+        # operations
+        self.sparTest = False
 
     def initializeGaussianProbability(
         self, mean: Union[float, np.ndarray],
@@ -164,6 +181,10 @@ class BaseIntegrator(ABC):
     @property
     def get_prob(self) -> np.ndarray:
         return self.prob
+
+    @abstractclassmethod
+    def initializePhysicalTrackers(self):
+        pass
 
     @abstractclassmethod
     def initDiffusionMatrix(self):
