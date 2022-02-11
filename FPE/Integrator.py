@@ -19,7 +19,7 @@ import time
 from FPE.base import BaseIntegrator
 
 
-class FPE_integrator_1D(BaseIntegrator):
+class FPE_Integrator_1D(BaseIntegrator):
 
     def __init__(
         self, D: float, dt: float, dx: float, xArray: float,
@@ -155,90 +155,6 @@ class FPE_integrator_1D(BaseIntegrator):
         self._matrixBoundary_A(alpha, self.N - 1)
         self._matrixBoundary_B(alpha, self.N - 1)
 
-    def testSparse(self):
-        sBMat = scipy.sparse.csr_matrix(self.BMat)
-        sAMat = scipy.sparse.csr_matrix(self.AMat)
-        sCMat = scipy.sparse.csr_matrix(self.CMat)
-
-        if(self.constDiff is True):
-            startSparse_inv = time.time()
-            _ = sCMat.dot(self.prob)
-            endSparse_inv = time.time()
-            timeSparse = endSparse_inv - startSparse_inv
-
-            startReg_inv = time.time()
-            _ = np.linalg.solve(self.CMat, self.prob)
-            endReg_inv = time.time()
-            timeReg = endReg_inv - startReg_inv
-
-            if(timeSparse < timeReg):
-                if(self.output is True):
-                    print("\t\tSparse matrix methods preferred...")
-
-                self.sparTest = True
-                self.AMat = sAMat
-                self.BMat = sBMat
-                self.CMat = sCMat
-
-            else:
-                if(self.output is True):
-                    print("\t\tDense matrix methods preferred...")
-                self.sparTest = False
-
-        else:
-            startSparse_full = time.time()
-            sbVec = sBMat.dot(self.prob)
-            _ = scipy.sparse.linalg.spsolve(sAMat, sbVec)
-            endSparse_full = time.time()
-            timeSparse = endSparse_full - startSparse_full
-
-            startReg_full = time.time()
-            bVec = np.matmul(self.BMat, self.prob)
-            _ = np.linalg.solve(self.AMat, bVec)
-            endReg_full = time.time()
-            timeReg = endReg_full - startReg_full
-
-            if(timeSparse < timeReg):
-                if(self.output is True):
-                    print("\t\tSparse matrix methods preferred...")
-                self.sparTest = True
-            else:
-                if(self.output is True):
-                    print("\t\tDense matrix methods preferred...")
-                self.sparTest = False
-
-    def integrate_step_advection(
-        self, forceParams: Tuple, forceFunction: Callable
-    ):
-        self.advectionUpdate(forceParams, forceFunction, self.dt)
-
-    def integrate_step(self, forceParams: Tuple, forceFunction: Callable):
-
-        if(self.splitMethod == 'lie'):
-            self.advectionUpdate(forceParams, forceFunction, self.dt)
-            self.diffusionUpdate()
-
-        elif(self.splitMethod == 'strang'):
-            self.advectionUpdate(forceParams, forceFunction, 0.5 * self.dt)
-            self.diffusionUpdate()
-            self.advectionUpdate(forceParams, forceFunction, 0.5 * self.dt)
-
-        elif(self.splitMethod == 'swss'):
-            initProb = self.prob
-            self.advectionUpdate(forceParams, forceFunction, self.dt)
-            self.diffusionUpdate()
-            prob_1 = self.prob
-            self.prob = initProb
-            self.diffusionUpdate()
-            self.advectionUpdate(forceParams, forceFunction, self.dt)
-            prob_2 = self.prob
-            self.prob = 0.5 * (prob_1 + prob_2)
-
-        else:
-            self.advectionUpdate(forceParams, forceFunction, 0.5 * self.dt)
-            self.diffusionUpdate()
-            self.advectionUpdate(forceParams, forceFunction, 0.5 * self.dt)
-
     def work_step(
         self, forceParams: Tuple, forceFunction: Callable,
         energyFunction: Callable
@@ -276,30 +192,6 @@ class FPE_integrator_1D(BaseIntegrator):
         )
         self.fluxTracker = sum(self.flux) * self.dx
         self.integrate_step(forceParams, forceFunction)
-
-    def diffusionUpdate(self):
-        if(self.sparTest is True):
-            if(self.constDiff is True):
-                self.prob = self.CMat.dot(self.prob)
-            else:
-                bVec = self.BMat.dot(self.prob)
-                self.prob = scipy.sparse.linalg.spsolve(self.AMat, bVec)
-        else:
-            if(self.constDiff is True):
-                self.prob = np.matmul(self.CMat, self.prob)
-            else:
-                bVec = np.matmul(self.BMat, self.prob)
-                self.prob = np.linalg.solve(self.AMat, bVec)
-
-    def advectionUpdate(
-        self, forceParams: Tuple, forceFunction: Callable, deltaT: float
-    ):
-        if(self.adScheme == 'lax-wendroff' or self.adScheme == 'lw'):
-            self.laxWendroff(forceParams, forceFunction, deltaT)
-        if(self.adScheme == 'lax' or self.adScheme == 'l'):
-            self.lax(forceParams, forceFunction, deltaT)
-        else:
-            self.laxWendroff(forceParams, forceFunction, deltaT)
 
     def check_CFL(self, forceParams: Tuple, forceFunction: Callable):
         maxForce = 0

@@ -6,6 +6,8 @@ import numpy as np
 import time
 import scipy.sparse
 
+from FPE import config
+
 
 class BaseIntegratorResult(ABC):
     # Base class for integrator result containers
@@ -42,10 +44,24 @@ class BaseIntegrator(ABC):
         self.sparTest = False
 
     def _validateInput(
-        self, diffScheme: str, adScheme: str, coundaryCond: str,
+        self, diffScheme: str, adScheme: str, boundaryCond: str,
         splitMethod: str
     ):
-        pass
+        if diffScheme not in config.diffSchemes:
+            raise ValueError("diffScheme not recognized, see config file")
+
+        if adScheme not in config.adSchemes:
+            raise ValueError("adScheme not recognized, see config file")
+
+        if boundaryCond not in config.boundaryConditions:
+            raise ValueError(
+                "boundary condition not recognized, see config file"
+            )
+
+        if splitMethod not in config.splittingMethods:
+            raise ValueError(
+                "Splitting method not recognized, see config file"
+            )
 
     def initializeGaussianProbability(
         self, mean: Union[float, np.ndarray],
