@@ -8,6 +8,10 @@ import numpy as np
 import sys
 
 
+def noForce(position, params):
+    return 0
+
+
 def constantForce(position, params):
     '''
     Constant force, force parameters: [kVal]

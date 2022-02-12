@@ -18,8 +18,8 @@ class BaseIntegratorResult(ABC):
 class BaseIntegrator(ABC):
     # Base class for integrator
     def __init__(
-        self, D: float, diffScheme: str, adScheme: str, boundaryCond: str,
-        splitMethod: str, output: Optional[bool] = False,
+        self, D: float, dt: float, diffScheme: str, adScheme: str,
+        boundaryCond: str, splitMethod: str, output: Optional[bool] = False,
         constDiff: Optional[bool] = True
     ):
         # Validate input parameters
@@ -28,6 +28,7 @@ class BaseIntegrator(ABC):
         # Initialize instance variables. For now, this routine supports
         # constant diffusion coefficient integrations (i.e. D is not a tensor)
         self.D = D
+        self.dt = dt
 
         # Instantiate the instance directives
         self.diffScheme = diffScheme    # Integration scheme for diffusion term
@@ -202,17 +203,21 @@ class BaseIntegrator(ABC):
         elif(self.splitMethod == 'swss'):
             self._integrateStepSWSS(forceParams, forceFunction)
         else:
+            # NOTE: Potentially change this to raise an error?
             self._integrateStepStrang(forceParams, forceFunction)
 
+    @classmethod
     def _integrateStepLie(self, forceParams: Tuple, forceFunction: Callable):
         self.advectionUpdate(forceParams, forceFunction, self.dt)
         self.diffusionUpdate()
 
+    # @classmethod
     def _integrateStepStrang(self, forceParams, forceFunction):
         self.advectionUpdate(forceParams, forceFunction, 0.5 * self.dt)
         self.diffusionUpdate()
         self.advectionUpdate(forceParams, forceFunction, 0.5 * self.dt)
 
+    @classmethod
     def _integrateStepSWSS(self, forceParams, forceFunction):
         initProb = self.prob
         self.advectionUpdate(forceParams, forceFunction, self.dt)

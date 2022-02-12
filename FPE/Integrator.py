@@ -31,11 +31,11 @@ class FPE_Integrator_1D(BaseIntegrator):
         constDiff: Optional[bool] = True
     ):
         super().__init__(
-            D, diffScheme, adScheme, boundaryCond, splitMethod, output,
+            D, dt, diffScheme, adScheme, boundaryCond, splitMethod, output,
             constDiff
         )
         self.dx = dx
-        self.dt = dt
+        # self.dt = dt
 
         self.N = len(xArray)
         self.prob = np.ones(self.N) / (self.N * self.dx)
@@ -227,7 +227,7 @@ class FPE_Integrator_1D(BaseIntegrator):
                 # BUG There was an inconsistency between the differet iBCs for
                 # this, HW had a factor of 1/2 in front of the flux difference,
                 # check this
-                - self._getFluxDiffLW(forceFunction, forceParams)
+                - self._getFluxDiff_LaxWendroff(forceFunction, forceParams, deltaT, i)
             )
             # NOTE Also have factor of 1/2 here (see below)
             halfFlux[i + 1] = (
