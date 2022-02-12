@@ -219,6 +219,7 @@ class FPE_Integrator_1D(BaseIntegrator):
 
         if(self.BC == 'hard-wall' or self.BC == 'hw'):
             for index in range(len(self.prob) - 1):
+                # NOTE Check these calcualtions
                 # fluxFw =
                 # (self.D*deltaT/(2*self.dx))*(forceFunction(self.xArray[index+1],forceParams)*self.prob[index+1])
                 # fluxRev =
