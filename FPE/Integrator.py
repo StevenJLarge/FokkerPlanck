@@ -77,7 +77,7 @@ class FPE_Integrator_1D(BaseIntegrator):
         # Initialize boundary columns based on self.BC
         self._initializeBoundaryTerms(alpha)
 
-        # Initializze bulk matrix terms
+        # Initialize bulk matrix terms
         for rowIndex in range(1, self.N - 1):
             self.AMat[rowIndex, :] = [
                 1 + 2 * alpha * self.expImp if col == rowIndex
@@ -156,21 +156,6 @@ class FPE_Integrator_1D(BaseIntegrator):
         self._matrixBoundary_B(alpha, self.N - 1)
 
     def work_step(
-        self, forceParams: Tuple, forceFunction: Callable,
-        energyFunction: Callable
-    ):
-        currEnergy = (
-            sum(energyFunction(self.xArray, forceParams, 0) * self.prob) * self.dx
-        )
-        newEnergy = (
-            sum(energyFunction(self.xArray, forceParams, forceParams[1] * self.dt) * self.prob) * self.dx
-        )
-        self.integrate_step(forceParams, forceFunction)
-        self.workAccumulator += newEnergy - currEnergy
-        self.workTracker.append(self.workAccumulator)
-        self.powerTracker.append((newEnergy - currEnergy) / self.dt)
-
-    def work_step2(
         self, forceParams: Tuple, forceParams_new: Tuple,
         forceFunction: Callable, energyFunction: Callable
     ):
@@ -210,114 +195,74 @@ class FPE_Integrator_1D(BaseIntegrator):
 
         return returnVal
 
-    def laxWendroff(
+    def _getFluxDiff_LaxWendroff(
+        self, forceFunction: Callable, forceParams: Tuple, deltaT: float,
+        idx: int
+    ) -> float:
+        fluxFw = (
+            (self.D * deltaT / self.dx)
+            * forceFunction(self.xArray[(idx + 1) % len(self.xArray)], forceParams)
+            * self.prob[(idx + 1) % len(self.xArray)]
+        )
+        fluxRev = (
+            (self.D * deltaT / self.dx)
+            * forceFunction(self.xArray[idx], forceParams)
+            * self.prob[idx]
+        )
+
+        return fluxFw - fluxRev
+
+    def _calcBoundaryFlux_laxWendroff(
         self, forceParams: Tuple, forceFunction: Callable, deltaT: float
-    ):
+    ) -> Tuple[np.ndarray, np.ndarray]:
+
         halfProb = np.zeros(len(self.prob) + 1)
         halfFlux = np.zeros(len(self.prob) + 1)
-        newProb = np.zeros(len(self.prob))
 
-        if(self.BC == 'hard-wall' or self.BC == 'hw'):
-            for index in range(len(self.prob) - 1):
-                # NOTE Check these calcualtions
-                # fluxFw =
-                # (self.D*deltaT/(2*self.dx))*(forceFunction(self.xArray[index+1],forceParams)*self.prob[index+1])
-                # fluxRev =
-                # (self.D*deltaT/(2*self.dx))*(forceFunction(self.xArray[index],forceParams)*self.prob[index])
-                fluxFw = (
-                    (self.D * deltaT / self.dx)
-                    * forceFunction(self.xArray[index+1], forceParams)
-                    * self.prob[index+1]
-                )
-                fluxRev = (
-                    (self.D * deltaT / self.dx)
-                    * forceFunction(self.xArray[index], forceParams)
-                    * self.prob[index]
-                )
+        # Bulk terms
+        for i in range(len(self.prob) - 1):
 
-                halfProb[index+1] = (
-                    0.5 * (self.prob[index+1] + self.prob[index])
-                    # BUG Is this factor of 1/2 supposed to be here?
-                    - 0.5 * (fluxFw - fluxRev)
-                )
-                # NOTE Also have factor of 1/2 here (see below)
-                halfFlux[index+1] = (
-                    0.5 * forceFunction(self.xArray[index] + 0.5 * self.dx, forceParams) * halfProb[index+1]
-                )
-
-        elif(self.BC == 'periodic' or self.BC == 'p'):
-            for index in range(len(self.prob) - 1):
-                # fluxFw =
-                # (self.D*deltaT/(2*self.dx))*(forceFunction(self.xArray[index+1],forceParams)*self.prob[index+1])
-                # fluxRev =
-                # (self.D*deltaT/(2*self.dx))*(forceFunction(self.xArray[index],forceParams)*self.prob[index])
-                fluxFw = (
-                    (self.D * deltaT / self.dx)
-                    * forceFunction(self.xArray[index+1], forceParams)
-                    * self.prob[index+1]
-                )
-
-                fluxRev = (
-                    (self.D * deltaT / self.dx)
-                    * forceFunction(self.xArray[index], forceParams)
-                    * self.prob[index]
-                )
-
-                halfProb[index+1] = (
-                    0.5 * (self.prob[index+1] + self.prob[index])
-                    - (fluxFw - fluxRev)
-                )
-                # NOTE Factor of 1/2 in front of the force because we are looking at a half time step?
-                halfFlux[index+1] = (
-                    0.5 * forceFunction(self.xArray[index] + 0.5 * self.dx, forceParams) * halfProb[index+1]
-                )
-
-            fluxFw = (
-                (self.D * deltaT / self.dx)
-                * forceFunction(self.xArray[0], forceParams)
-                * self.prob[0]
+            halfProb[i + 1] = (
+                0.5 * (self.prob[i + 1] + self.prob[i])
+                # BUG There was an inconsistency between the differet iBCs for
+                # this, HW had a factor of 1/2 in front of the flux difference,
+                # check this
+                - self._getFluxDiffLW(forceFunction, forceParams)
+            )
+            # NOTE Also have factor of 1/2 here (see below)
+            halfFlux[i + 1] = (
+                0.5 * forceFunction(self.xArray[i] + 0.5 * self.dx, forceParams) * halfProb[i + 1]
             )
 
-            fluxRev = (
-                (self.D * deltaT / self.dx)
-                * forceFunction(self.xArray[-1], forceParams)
-                * self.prob[-1]
-            )
-
+        # For HW noting else needs to be done
+        # For periodic need to specify boundaries (self.N-1 index)
+        if self.BC == 'periodic':
             halfProb[0] = (
                 0.5 * (self.prob[0] + self.prob[-1])
-                - (fluxFw - fluxRev)
+                - self._getFluxDiff_LaxWendroff(
+                    forceFunction, forceParams, deltaT, len(self.prob) - 1
+                )
             )
-            # NOTE Same factor of 1/2 here as well.  Seems to make the calculations work...
+            # NOTE Same factor of 1/2 here as well.
+            # Seems to make the calculations work...
             halfFlux[0] = (
                 0.5 * forceFunction(self.xArray[0] - 0.5 * self.dx, forceParams) * halfProb[0]
             )
             halfFlux[-1] = halfFlux[0]
 
-        else:
-            for index in range(len(self.prob) - 2):
-                # fluxFw =
-                # (self.D*deltaT/(2*self.dx))*(forceFunction(self.xArray[index+1],forceParams)*self.prob[index+1])
-                # fluxRev =
-                # (self.D*deltaT/(2*self.dx))*(forceFunction(self.xArray[index],forceParams)*self.prob[index])
-                fluxFw = (
-                    (self.D * deltaT / self.dx)
-                    * forceFunction(self.xArray[index+1], forceParams)
-                    * self.prob[index+1]
-                )
+        # NOTE For open BCs, there are currently no modifications to the
+        # specification of coundary terms. I think this is incorrect?
+        # elif self.BC == "open":
+        return halfProb, halfFlux
 
-                fluxRev = (
-                    (self.D * deltaT / self.dx)
-                    * forceFunction(self.xArray[index], forceParams)
-                    * self.prob[index]
-                )
+    def laxWendroff(
+        self, forceParams: Tuple, forceFunction: Callable, deltaT: float
+    ):
+        newProb = np.zeros(len(self.prob))
 
-                halfProb[index+1] = (
-                    0.5 * (self.prob[index+1] + self.prob[index])
-                    - (fluxFw - fluxRev)
-                )
-
-                halfFlux[index+1] = forceFunction(self.xArray[index]+0.5*self.dx, forceParams)*halfProb[index]
+        halfProb, halfFlux = self._calcBoundaryFlux_laxWendroff(
+            forceParams, forceFunction, deltaT
+        )
 
         for index in range(len(self.prob)):
             newProb[index] = (
