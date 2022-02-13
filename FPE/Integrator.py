@@ -104,7 +104,7 @@ class FPE_Integrator_1D(BaseIntegrator):
 
         if(self.BC == "periodic"):
             self.AMat[idx, :] = [
-                1 + 2 * alpha * self.expImp if col == 0
+                1 + 2 * alpha * self.expImp if col == idx
                 else -self.expImp * alpha if col == (idx + 1) % self.N
                 else -self.expImp * alpha if col == (idx - 1) % self.N
                 else 0 for col in range(self.N)
@@ -112,7 +112,7 @@ class FPE_Integrator_1D(BaseIntegrator):
 
         elif(self.BC == "open"):
             self.AMat[idx, :] = [
-                1 + 2 * alpha * self.expImp if col == 0
+                1 + 2 * alpha * self.expImp if col == idx
                 else -self.expImp * alpha if col == abs(idx - 1)
                 else 0 for col in range(self.N)
             ]
