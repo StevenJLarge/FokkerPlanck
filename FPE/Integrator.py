@@ -1,12 +1,12 @@
 '''
-Filename: FPE_integrator_v4.py
+Filename: Integrator.py
 
 This python script contains the routines used to solve the Fokker-Planck
 equation numerically via a split-integrator scheme with multiple methods
 
 Author:         Steven Large
 Created:        August 25th 2019
-Last Modified:  January 3rd 2020
+Last Modified:  February 13th 2022
 
 Software:       python 3.7.x (compatible with python 2.x.x and 3.x.x)
 '''
@@ -293,6 +293,7 @@ class FPE_Integrator_1D(BaseIntegrator):
         self.prob = newProb
 
 
+# ANCHOR 2D Integrator
 class FPE_integrator_2D:
 
     def __init__(
