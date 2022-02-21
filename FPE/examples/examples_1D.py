@@ -1,15 +1,31 @@
 # Samples of the FPE Integrator in action
 
 import os
-from typing import Tuple, Optional, List
+from typing import Tuple, Optional, List, Iterable
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import scipy.integrate as si
 from FPE import Integrator
-# import FPE.forceFunctions as ff
+import FPE.forceFunctions as ff
 
 from pathlib import Path
+
+
+class ProbabilityTracker():
+    def __init__(self, xArray: Iterable, prob: np.ndarray, time: float):
+        self.X = xArray
+        self.normalization = [calc_normalization(prob, xArray)]
+        self.density = [prob]
+        self.time = [time]
+
+    def update(self, prob: np.ndarray, time: float):
+        self.normalization.append(calc_normalization(prob, self.X))
+        self.density.append(prob)
+        self.time.append(time)
+
+    def report(self) -> Tuple[Iterable]:
+        return self.density, self.time, self.normalization, self.X
 
 
 def calc_normalization(prob: np.ndarray, xVals: np.ndarray) -> float:
@@ -27,24 +43,47 @@ def calcDiffusion(BC: Optional[str] = "hard-wall") -> Tuple[List, List]:
 
     elapsed_time = 0.0
     counter = 0
-    density_tracker = [obj.get_prob]
-    time_tracker = [elapsed_time]
-    norm_tracker = [calc_normalization(obj.get_prob, xArray)]
+
+    probRes = ProbabilityTracker(xArray, obj.getprob, elapsed_time)
 
     while elapsed_time <= 1.0:
         # obj.integrate_step((0,), ff.noForce)
         obj.diffusionUpdate()
         if counter % 5 == 0:
-            density_tracker.append(obj.get_prob)
-            time_tracker.append(elapsed_time)
-            norm_tracker.append(calc_normalization(obj.get_prob, xArray))
+            probRes.update(obj.get_prob, elapsed_time)
+
         elapsed_time += dt
         counter += 1
 
-    return density_tracker, time_tracker, norm_tracker, xArray
+    return probRes.report()
 
 
-def genDiffusionOnlyPlot(
+def calcAdvection(BC: Optional[str] = "periodic") -> Tuple[List, List]:
+    dt = 0.005
+    dx = 0.0075
+    D = 1.0
+    kVal = 1.0
+
+    xArray = np.arange(-1.5, 1.5, dx)
+    obj = Integrator.FPE_Integrator_1D(D, dt, dx, xArray, boundaryCond=BC)
+    obj.initializeProbability(0, 0.125)
+
+    elapsed_time = 0.0
+    counter = 0
+
+    probRes = ProbabilityTracker(xArray, obj.get_prob, elapsed_time)
+
+    while elapsed_time <= 2.0:
+        obj.advectionUpdate([kVal], ff.constantForce, dt)
+        if counter % 25 == 0:
+            probRes.update(obj.get_prob, elapsed_time)
+        elapsed_time += dt
+        counter += 1
+
+    return probRes.report()
+
+
+def genTrackingPlot(
     density_tracker: List, time_tracker: List, norm_tracker: List,
     xArray: np.ndarray, write_name: str, write_path: str,
     write_format: Optional[str] = "pdf"
@@ -72,31 +111,49 @@ def genDiffusionOnlyPlot(
     plt.close()
 
 
-if __name__ == "__main__":
-    proj_dir = Path().resolve().parents[1]
-    write_dir = os.path.join(proj_dir, "results/visualizations/examples")
+def runDiffusionTests(write_dir: str):
     write_name_hw = "diffusion_example_HW.pdf"
     write_name_periodic = "diffusion_example_P.pdf"
     write_name_open = "diffusion_example_O.pdf"
 
     print("Working on hard-wall...")
     density_tracker, time_tracker, norm_tracker, xVals = calcDiffusion()
-    genDiffusionOnlyPlot(
+    genTrackingPlot(
         density_tracker, time_tracker, norm_tracker, xVals,
         write_name_hw, write_dir
     )
 
-    # NOTE Issue with PBC here
     print("Working on periodic...")
     density_tracker, time_tracker, norm_tracker, xVals = calcDiffusion(BC="periodic")
-    genDiffusionOnlyPlot(
+    genTrackingPlot(
         density_tracker, time_tracker, norm_tracker, xVals,
         write_name_periodic, write_dir
     )
 
     print("Working on open boundary...")
     density_tracker, time_tracker, norm_tracker, xVals = calcDiffusion(BC="open")
-    genDiffusionOnlyPlot(
+    genTrackingPlot(
         density_tracker, time_tracker, norm_tracker, xVals,
         write_name_open, write_dir
     )
+
+
+def runAdvectionTests(write_dir: str):
+    write_name = "advection_test_constForce.pdf"
+    print("working on advection test (PBCs)")
+    density_tracker, time_tracker, norm_tracker, xVals = calcAdvection()
+    genTrackingPlot(
+        density_tracker, time_tracker, norm_tracker, xVals, write_name,
+        write_dir
+    )
+
+
+if __name__ == "__main__":
+    proj_dir = Path().resolve().parents[1]
+    write_dir = os.path.join(proj_dir, "results/visualizations/examples")
+
+    # Diffusion test scenarios
+    runDiffusionTests(write_dir)
+
+    # Advection test scenarios
+    runAdvectionTests(write_dir)

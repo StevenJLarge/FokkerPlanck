@@ -279,9 +279,10 @@ class FPE_Integrator_1D(BaseIntegrator):
 
         for index in range(len(self.prob) - 2):
             newProb[index+1] = (
-                # NOTE I think this should be a '+' not a minus
+                # NOTE I think this should be a '+' not a minus and I think the
+                # second indices should be idx + 2 and idx (which are i \pm 1)?
                 # 0.5 * (self.prob[index+1] - self.prob[index-1])
-                0.5 * (self.prob[index+1] + self.prob[index-1])
+                0.5 * (self.prob[index+2] + self.prob[index])
                 - alpha * (
                     forceFunction(self.xArray[index+2], forceParams) * self.prob[index+2]
                     - forceFunction(self.xArray[index], forceParams) * self.prob[index]
@@ -289,10 +290,40 @@ class FPE_Integrator_1D(BaseIntegrator):
             )
 
         # ANCHOR IMPLEMENT BCs HERE CORRECTLY....
-        newProb[0] = 0
-        newProb[-1] = 0
+        newProb[0], newProb[-1] = self._lax_setBoundaries(
+            forceParams, forceFunction, alpha
+        )
 
+        # NOTE Somewhat naively, I would assume that the hard-wall condition is
+        # that ewProb[0] is taken by replacing the self.prob[index-1]with 0 
+        # as there is no existing probability to the left (or right) os the
+        # base grid. For periodic conditions, I would expect that we would
+        # set the boundaries periodically, and for open
         self.prob = newProb
+
+        def _lax_setBoundaries(
+            self, forceParams: Tuple, forceFunction: Callable, alpha: float
+        ) -> Tuple[float]:
+            if self.BC == "periodic":
+                leftBoundary = (
+                    0.5 * (self.prob[0] + self.prob[-1])
+                    - alpha * (
+                        forceFunction(self.xArray[1], forceParams) * self.prob[1]
+                        - forceFunction(self.xArray[-1], forceParams) * self.prob[-1]
+                    )
+                )
+
+                rightBoundary = leftBoundary
+                return leftBoundary, rightBoundary
+
+            # For open boundary conitions, the probability is zero on the
+            # boundary
+            if self.BC == "open":
+                return 0.0, 0.0
+
+            # For hard-walls, we need to set the flux to zero,
+            else:
+                return 0.0, 0.0
 
 
 # ANCHOR 2D Integrator
