@@ -279,10 +279,12 @@ class FPE_Integrator_1D(BaseIntegrator):
 
         for index in range(len(self.prob) - 2):
             newProb[index+1] = (
-                0.5 * (self.prob[index+1] - self.prob[index-1])
+                # NOTE I think this should be a '+' not a minus
+                # 0.5 * (self.prob[index+1] - self.prob[index-1])
+                0.5 * (self.prob[index+1] + self.prob[index-1])
                 - alpha * (
                     forceFunction(self.xArray[index+2], forceParams) * self.prob[index+2]
-                    - forceFunction(self.xArray[index]*self.prob[index])
+                    - forceFunction(self.xArray[index], forceParams) * self.prob[index]
                 )
             )
 
