@@ -32,7 +32,7 @@ def calc_normalization(prob: np.ndarray, xVals: np.ndarray) -> float:
     return si.trapz(prob, xVals)
 
 
-def calcDiffusion(BC: Optional[str] = "hard-wall") -> Tuple[List, List]:
+def calcDiffusion(BC: Optional[str] = "hard-wall") -> ProbabilityTracker:
     dt = 0.005
     dx = 0.001
     D = 1.0
@@ -58,9 +58,9 @@ def calcDiffusion(BC: Optional[str] = "hard-wall") -> Tuple[List, List]:
     return probRes.report()
 
 
-def calcAdvection(BC: Optional[str] = "periodic") -> Tuple[List, List]:
-    dt = 0.005
-    dx = 0.0075
+def calcAdvection(BC: Optional[str] = "periodic") -> ProbabilityTracker:
+    dt = 0.00125
+    dx = 0.001
     D = 1.0
     kVal = 1.0
 
@@ -79,6 +79,31 @@ def calcAdvection(BC: Optional[str] = "periodic") -> Tuple[List, List]:
             probRes.update(obj.get_prob, elapsed_time)
         elapsed_time += dt
         counter += 1
+
+    return probRes.report()
+
+def calcAdvectionDiffusion(BC: Optional[str] = "periodic") -> ProbabilityTracker:
+    dt = 0.001
+    dx = 0.0075
+    D = 1.0
+    k_trap = 2.0
+    trap_center = 0.5
+
+    xArray = np.arange(-2.0, 2.0, dx)
+    obj = Integrator.FPE_Integrator_1D(D, dt, dx, xArray, boundaryCond=BC)
+    obj.initializeProbability(-0.5, 0.125)
+
+    elapsed_time = 0.0
+    counter = 0
+
+    probRes = ProbabilityTracker(xArray, obj.get_prob, elapsed_time)
+
+    while elapsed_time <= 1.0:
+        obj.integrate_step([k_trap, trap_center], ff.harmonicForce)
+        if counter % 25 == 0:
+            probRes.update(obj.get_prob, elapsed_time)
+        counter += 1
+        elapsed_time += dt
 
     return probRes.report()
 
@@ -147,13 +172,25 @@ def runAdvectionTests(write_dir: str):
         write_dir
     )
 
+def runAdvectionDiffusionTests(write_dir: str):
+    write_name = "acvection_diffusion_constForce.pdf"
+    print("working on advection diffusion test (PCSs)")
+    density_tracker, time_tracker, norm_tracker, xVals = calcAdvectionDiffusion()
+    genTrackingPlot(
+        density_tracker, time_tracker, norm_tracker, xVals, write_name,
+        write_dir
+    )
+
 
 if __name__ == "__main__":
     proj_dir = Path().resolve().parents[1]
     write_dir = os.path.join(proj_dir, "results/visualizations/examples")
 
     # Diffusion test scenarios
-    runDiffusionTests(write_dir)
+    # runDiffusionTests(write_dir)
 
     # Advection test scenarios
-    runAdvectionTests(write_dir)
+    # runAdvectionTests(write_dir)
+
+    #Relaxation in a harmonic potential
+    runAdvectionDiffusionTests(write_dir)

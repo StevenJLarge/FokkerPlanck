@@ -200,12 +200,12 @@ class FPE_Integrator_1D(BaseIntegrator):
         idx: int
     ) -> float:
         fluxFw = (
-            (self.D * deltaT / self.dx)
+            (self.D * deltaT / (2 * self.dx))
             * forceFunction(self.xArray[(idx + 1) % len(self.xArray)], forceParams)
             * self.prob[(idx + 1) % len(self.xArray)]
         )
         fluxRev = (
-            (self.D * deltaT / self.dx)
+            (self.D * deltaT / (2 * self.dx))
             * forceFunction(self.xArray[idx], forceParams)
             * self.prob[idx]
         )
@@ -227,31 +227,37 @@ class FPE_Integrator_1D(BaseIntegrator):
                 # BUG There was an inconsistency between the differet iBCs for
                 # this, HW had a factor of 1/2 in front of the flux difference,
                 # check this
-                - self._getFluxDiff_LaxWendroff(forceFunction, forceParams, deltaT, i)
+                # NOTE INcorporated prefactor into subroutine, but I still think there
+                # needs to be a factor of 1/2 out front because we are calculating
+                # a half-step probability update, so dt -> 0.5 dt
+                - 0.5 * self._getFluxDiff_LaxWendroff(forceFunction, forceParams, deltaT, i)
             )
             # NOTE Also have factor of 1/2 here (see below)
             halfFlux[i + 1] = (
-                0.5 * forceFunction(self.xArray[i] + 0.5 * self.dx, forceParams) * halfProb[i + 1]
+                #0.5 * 
+                forceFunction(self.xArray[i] + 0.5 * self.dx, forceParams) * halfProb[i + 1]
             )
 
-        # For HW noting else needs to be done
+        # For HW noting ele needs to be done
         # For periodic need to specify boundaries (self.N-1 index)
         if self.BC == 'periodic':
             halfProb[0] = (
                 0.5 * (self.prob[0] + self.prob[-1])
-                - self._getFluxDiff_LaxWendroff(
+                # NOTE Added factor of 0.5 here
+                - 0.5 * self._getFluxDiff_LaxWendroff(
                     forceFunction, forceParams, deltaT, len(self.prob) - 1
                 )
             )
             # NOTE Same factor of 1/2 here as well.
             # Seems to make the calculations work...
             halfFlux[0] = (
-                0.5 * forceFunction(self.xArray[0] - 0.5 * self.dx, forceParams) * halfProb[0]
+                # 0.5 * 
+                forceFunction(self.xArray[0] - 0.5 * self.dx, forceParams) * halfProb[0]
             )
             halfFlux[-1] = halfFlux[0]
 
         # NOTE For open BCs, there are currently no modifications to the
-        # specification of coundary terms. I think this is incorrect?
+        # specification of boundary terms. I think this is incorrect?
         # elif self.BC == "open":
         return halfProb, halfFlux
 

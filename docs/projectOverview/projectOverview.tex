@@ -46,15 +46,30 @@
 
 \section{Introduction}
 
+At an ensemble level, the dynamics of a particular stochastic process can be captured by equations that govern the time-dependent evolution ofits probability distribution over system states. For instance, systems which are described microscopically by stochatic differential equations (SDEs)---like the Langevin equation---can be analagously described at the level of a probability distribution through solving a partial differential equation (PDE).  In fact, one can show this formally by deriving the equations of motion for the trajectory- or distribution-level dynamics of a general stochastic system through the Chapman-Kolmogorov equation. Generally speaking, the mathematical description of such a system---as codified, for instance, by its L\'{e}vy-Khintchine decomposition---is captured by three distinct contributions: drift, brownian diffusion, and jumps. The standard Langevin equation captured the contributions of drift and Brownian diffusion, while the presence of jumps leads to more exotic stochastic processes---and corresponding mathematical descriptions---through, for instance, L\'{e}vy processes.\footnote{A tractible and familiar example of this in the world of physics would be anomalous diffusion---either super- or sub-diffusive dynamics.} In the absence of jumps, modelling becomes mroe simple, and while the trajectory-level dynamics are goverened by a Langevin equation, the time-dependent evolution of the ensemble-level probability distribution is govenred by a second-order parabolic PDE known as the Fokker-Planck equation.\footnote{In the presence of jumps, the analogous PDE is muchn more difficult to handle, and will often involve fractional derivative terms.}
+
+From a practical standpoint, while trajectory-level dynamics can be relatively simple to understand, and nearly-trivial to simulate numerically, obtaining statistical quantitites can often be numerically expensive and time-consuming, with extra care being necessary to ensure that a sufficiently representative sample of trajectories have been sampled so that the statistical quantities being calculated have convereged.  Put another way, when inferring properties of a stochastic system from trajectory simulations, one has to assume that the entire trajectory distribution has been adequately sampled. This is not, however, a problem for direct solutions to the corresponding PDE, as the solution itself gives all information about the distirbution of states.
+
+Mathematically, the Fokker-Planck equation can be represented by the general flux-conservative form
+\begin{equation}
+    \partial_t P(x, t) = \partial_x J(x, t)
+\end{equation}
+where $p(x, t)$ is the space- and time-dependent probability density function of a system, and $J(x, t)$ is the instantaneous probability flux through location $x$ at time $t$.x
+
+
 % Introduce Fokker-Planck equation as an important equation
 The Fokker-Planck equation is a tremendously important relation in the study of all types of stochastic systems. Starting from the most basic `continuity equation' of stochastic processes---the Chapman-Kolmogorov equation---one can show that, under a set of reasonable assumptions on the continuity and smoothness of the process itself, the governing dynamics at the level of a probability distribution is the Fokker-Planck equation.  Put simply, the Fokker-Planck equation takes the form of a 2nd order parabolic partial differential equation, describing the time-dependent evolution of a probability distribution (among other things).
 % Superset of other important equations
 
 \part{Numerical Integration}
 
-    \section{Numerical integration: general properties}
-    % Explicit and Implicit integration routine and discussion of general properties of numerical integration
-    % Introduce general discretization schemes
+
+\section{Numerical integration: general properties}
+% Explicit and Implicit integration routine and discussion of general properties of numerical integration
+% Introduce general discretization schemes
+The central difficulty in solving PDEs is finding an accurate discrete representation of the function and its evolution so that the continuous-space aspects are preserved.  While this may naively seem like a relatively straightforward task, there is a tremendous subtlety to the particular way in which the equations are discretized, with many possible techniques, each having its own benefits and drawbacks.
+
+For the case fo simplicity and concreteness, we will focus on a PDE with one spatial dimension for the time being, and will generalize to multiple spatial dimensions later on. For such a system, the solution to the PDE is given
 
     \section{Stability}
 
