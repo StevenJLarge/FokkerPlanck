@@ -165,7 +165,9 @@ class FPE_Integrator_1D(BaseIntegrator):
         newEnergy = (
             sum(energyFunction(self.xArray, forceParams_new) * self.prob) * self.dx
         )
+
         self.integrate_step(forceParams_new, forceFunction)
+
         self.workAccumulator += newEnergy - currEnergy
         self.workTracker.append(self.workAccumulator)
         self.powerTracker.append((newEnergy - currEnergy) / self.dt)

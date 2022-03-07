@@ -44,6 +44,11 @@ class BaseIntegrator(ABC):
         # operations
         self.sparTest = False
 
+        # Physics trackers
+        self.workAccumulator = 0
+        self.workTracker = []
+        self.powerTracker = []
+
     def _validateInput(
         self, diffScheme: str, adScheme: str, boundaryCond: str,
         splitMethod: str

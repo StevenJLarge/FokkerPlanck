@@ -53,8 +53,9 @@ def harmonicForce_constVel(position, params):
     return -params[0] * position - params[1] / (params[2] * params[3])
 
 
-def harmonicEnergy_constVel(position, params, trapCenter):
-    return 0.5 * params[0] * ((position - trapCenter)**2)
+def harmonicEnergy_constVel(position, params, trapCenter=0):
+    return 0.5 * params[0] * ((position - params[4]) ** 2)
+    # return 0.5 * params[0] * ((position - trapCenter)**2)
 
 
 def periodicForce(position, params, timeIndex=None):
