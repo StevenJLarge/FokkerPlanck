@@ -31,7 +31,7 @@ class ProbabilityTracker():
 class ProbabilityWorkTracker(ProbabilityTracker):
     def __init__(self, xArray: Iterable, prob: np.ndarray, time: float):
         super().__init__(xArray, prob, time)
-        self.time_full = [time]
+        self.time_full = []
 
     def update_time(self, time: float):
         self.time_full.append(time)
@@ -148,8 +148,8 @@ def calcHarmonicConstVel(trap_vel: float, trap_strength: float, BC: Optional[str
         obj.work_step(force_parameters, force_params_fwd, ff.harmonicForce_constVel, ff.harmonicEnergy_constVel)
         if counter % 25 == 0:
             probRes.update(obj.get_prob, elapsed_time)
-        else:
-            probRes.updateTime(elapsed_time)
+
+        probRes.update_time(elapsed_time)
         counter += 1
         elapsed_time += dt
 
@@ -179,7 +179,7 @@ def genTrackingPlot(
     ax[1].set_ylim([0, 1.1])
 
     plt.tight_layout()
-    # plt.savefig(os.path.join(write_path, write_name), format=write_format)
+    plt.savefig(os.path.join(write_path, write_name), format=write_format)
     plt.show()
     plt.close()
 
@@ -214,7 +214,7 @@ def genHarmonicWorkPlot(
     ax[1].set_xlabel(r"Elapsed time $\tau$", fontsize=15)
     ax[1].set_ylabel(r"Mean power input $\langle P(\tau)\rangle$", fontsize=15)
 
-    plt.tightlayout()
+    plt.tight_layout()
     plt.savefig(os.path.join(write_dir, write_name), format="pdf")
     plt.show()
     plt.close()
@@ -298,13 +298,13 @@ def runAdvectionDiffusionTests(write_dir: str):
     vel_labels = ["1/2", "1", "2"]
 
     print(f"Velocity --> {vel_arr[0]}...")
-    w_track_0, p_track_0, _, _, _, _ = calcHarmonicConstVel(vel_arr[0], trap_strength)
+    w_track_0, p_track_0, _, _, _, _, _ = calcHarmonicConstVel(vel_arr[0], trap_strength)
 
     print(f"Velocity --> {vel_arr[1]}...")
-    w_track_1, p_track_1, dens_track_1, t_track_1, n_track_1, x_1 = calcHarmonicConstVel(vel_arr[1], trap_strength)
+    w_track_1, p_track_1, t_full_1, dens_track_1, t_track_1, n_track_1, x_1 = calcHarmonicConstVel(vel_arr[1], trap_strength)
 
     print(f"Velocity --> {vel_arr[2]}...")
-    w_track_2, p_track_2, _, _, _, _ = calcHarmonicConstVel(vel_arr[2], trap_strength)
+    w_track_2, p_track_2, _, _, _, _, _ = calcHarmonicConstVel(vel_arr[2], trap_strength)
 
     genTrackingPlot(
         dens_track_1, t_track_1, n_track_1, x_1, write_name_constVel,
@@ -314,7 +314,7 @@ def runAdvectionDiffusionTests(write_dir: str):
     genHarmonicWorkPlot(
         [w_track_0, w_track_1, w_track_2],
         [p_track_0, p_track_1, p_track_2],
-        t_track_1, vel_arr, vel_labels, trap_strength, write_dir,
+        t_full_1, vel_arr, vel_labels, trap_strength, write_dir,
         write_name_work
     )
 
