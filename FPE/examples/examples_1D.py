@@ -238,7 +238,7 @@ def calcHarmonicWork_theory(
     return (
         ((velocity ** 2) / (beta * D))
         * (np.array(time_tracker)
-        - (1 - np.exp(-beta * D * trap_strength) * np.array(time_tracker)) / (beta * D * trap_strength))
+        - (1 - np.exp(-beta * D * trap_strength * np.array(time_tracker))) / (beta * D * trap_strength))
     )
 
 
