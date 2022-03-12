@@ -214,7 +214,7 @@ class FPE_Integrator_1D(BaseIntegrator):
 
         return fluxFw - fluxRev
 
-    def _calcBoundaryFlux_laxWendroff(
+    def _calcFlux_laxWendroff(
         self, forceParams: Tuple, forceFunction: Callable, deltaT: float
     ) -> Tuple[np.ndarray, np.ndarray]:
 
@@ -268,7 +268,7 @@ class FPE_Integrator_1D(BaseIntegrator):
     ):
         newProb = np.zeros(len(self.prob))
 
-        halfProb, halfFlux = self._calcBoundaryFlux_laxWendroff(
+        _, halfFlux = self._calcFlux_laxWendroff(
             forceParams, forceFunction, deltaT
         )
 
