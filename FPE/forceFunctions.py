@@ -145,7 +145,7 @@ Hairpin forces, force parameters
 
 
 def constForce(xVals, yVals, params):
-    return 1 * params[0]
+    return params[0]
 
 
 # ANCHOR Harmonic potential
