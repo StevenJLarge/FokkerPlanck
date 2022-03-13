@@ -73,7 +73,7 @@ def calcDiffusion(BC: Optional[str] = "hard-wall") -> ProbabilityTracker:
 
 def calcAdvection(BC: Optional[str] = "periodic") -> ProbabilityTracker:
     dt = 0.00125
-    dx = 0.001
+    dx = 0.002
     D = 1.0
     kVal = 1.0
 
@@ -327,7 +327,7 @@ if __name__ == "__main__":
     # runDiffusionTests(write_dir)
 
     # Advection test scenarios
-    # runAdvectionTests(write_dir)
+    runAdvectionTests(write_dir)
 
 
     # Relaxation in a harmonic potential

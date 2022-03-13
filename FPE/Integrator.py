@@ -202,12 +202,12 @@ class FPE_Integrator_1D(BaseIntegrator):
         idx: int
     ) -> float:
         fluxFw = (
-            (self.D * deltaT / (2 * self.dx))
+            (self.D * deltaT / (self.dx))
             * forceFunction(self.xArray[(idx + 1) % len(self.xArray)], forceParams)
             * self.prob[(idx + 1) % len(self.xArray)]
         )
         fluxRev = (
-            (self.D * deltaT / (2 * self.dx))
+            (self.D * deltaT / (self.dx))
             * forceFunction(self.xArray[idx], forceParams)
             * self.prob[idx]
         )
@@ -232,11 +232,12 @@ class FPE_Integrator_1D(BaseIntegrator):
                 # NOTE INcorporated prefactor into subroutine, but I still think there
                 # needs to be a factor of 1/2 out front because we are calculating
                 # a half-step probability update, so dt -> 0.5 dt
-                - 0.5 * self._getFluxDiff_LaxWendroff(forceFunction, forceParams, deltaT, i)
+                # Removed factor of 0.5 here
+                - self._getFluxDiff_LaxWendroff(forceFunction, forceParams, deltaT, i)
             )
-            # NOTE Also have factor of 1/2 here (see below)
+            # NOTE Also have factor of 1/2 here (see below)?
             halfFlux[i + 1] = (
-                #0.5 * 
+                # 0.5 *
                 forceFunction(self.xArray[i] + 0.5 * self.dx, forceParams) * halfProb[i + 1]
             )
 
@@ -246,14 +247,16 @@ class FPE_Integrator_1D(BaseIntegrator):
             halfProb[0] = (
                 0.5 * (self.prob[0] + self.prob[-1])
                 # NOTE Added factor of 0.5 here
-                - 0.5 * self._getFluxDiff_LaxWendroff(
+                # NOTE I dont think  this factor is needed...
+                # - 0.5 * 
+                - self._getFluxDiff_LaxWendroff(
                     forceFunction, forceParams, deltaT, len(self.prob) - 1
                 )
             )
             # NOTE Same factor of 1/2 here as well.
             # Seems to make the calculations work...
             halfFlux[0] = (
-                # 0.5 * 
+                # 0.5 *
                 forceFunction(self.xArray[0] - 0.5 * self.dx, forceParams) * halfProb[0]
             )
             halfFlux[-1] = halfFlux[0]
