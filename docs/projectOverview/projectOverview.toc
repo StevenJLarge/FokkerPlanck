@@ -1,18 +1,23 @@
 \contentsline {section}{\numberline {1}Introduction}{2}{section.1}%
 \contentsline {part}{I\hspace {1em}Numerical Integration}{2}{part.1}%
-\contentsline {section}{\numberline {2}Numerical integration: general properties}{2}{section.2}%
+\contentsline {section}{\numberline {2}Numerical integration: general properties}{3}{section.2}%
 \contentsline {section}{\numberline {3}Stability}{3}{section.3}%
 \contentsline {section}{\numberline {4}Advection}{3}{section.4}%
-\contentsline {section}{\numberline {5}Diffusion}{3}{section.5}%
-\contentsline {section}{\numberline {6}Fokker-Planck}{3}{section.6}%
-\contentsline {section}{\numberline {7}Driven Harmonic Trap}{3}{section.7}%
-\contentsline {subsection}{\numberline {7.1}Excess Work in a Translating Track}{3}{subsection.7.1}%
-\contentsline {subsection}{\numberline {7.2}Excess Work in a Breathing Trap}{3}{subsection.7.2}%
-\contentsline {section}{\numberline {8}Driven Rotary Machine}{3}{section.8}%
-\contentsline {subsection}{\numberline {8.1}Steady-State Flux}{3}{subsection.8.1}%
-\contentsline {subsection}{\numberline {8.2}Precision and Driving Accuracy}{3}{subsection.8.2}%
-\contentsline {section}{\numberline {9}Information Erasure}{3}{section.9}%
-\contentsline {section}{\numberline {10}Kolmogorov Backwards Equation}{3}{section.10}%
-\contentsline {subsection}{\numberline {10.1}First passage times}{3}{subsection.10.1}%
-\contentsline {subsection}{\numberline {10.2}Financial mathematics: Options pricing}{3}{subsection.10.2}%
-\contentsline {part}{II\hspace {1em}Steady-state solutions}{3}{part.2}%
+\contentsline {section}{\numberline {5}Diffusion}{5}{section.5}%
+\contentsline {section}{\numberline {6}Fokker-Planck}{5}{section.6}%
+\contentsline {section}{\numberline {7}Driven Harmonic Trap}{5}{section.7}%
+\contentsline {subsection}{\numberline {7.1}Excess Work in a Translating Track}{5}{subsection.7.1}%
+\contentsline {subsection}{\numberline {7.2}Excess Work in a Breathing Trap}{5}{subsection.7.2}%
+\contentsline {section}{\numberline {8}Driven Rotary Machine}{5}{section.8}%
+\contentsline {subsection}{\numberline {8.1}Steady-State Flux}{5}{subsection.8.1}%
+\contentsline {subsection}{\numberline {8.2}Precision and Driving Accuracy}{5}{subsection.8.2}%
+\contentsline {section}{\numberline {9}Information Erasure}{5}{section.9}%
+\contentsline {section}{\numberline {10}Kolmogorov Backwards Equation}{5}{section.10}%
+\contentsline {subsection}{\numberline {10.1}First passage times}{5}{subsection.10.1}%
+\contentsline {subsection}{\numberline {10.2}Financial mathematics: Options pricing}{5}{subsection.10.2}%
+\contentsline {part}{II\hspace {1em}Steady-state solutions}{5}{part.2}%
+\contentsline {section}{\numberline {A}Neumann stability analysis}{5}{appendix.A}%
+\contentsline {subsection}{\numberline {A.1}FCTS Scheme: advection and diffusion}{5}{subsection.A.1}%
+\contentsline {subsection}{\numberline {A.2}Advection: Lax scheme}{5}{subsection.A.2}%
+\contentsline {subsection}{\numberline {A.3}Advection: Lax-Wendroff scheme}{5}{subsection.A.3}%
+\contentsline {subsection}{\numberline {A.4}Diffusion: Crank-Nicolson Scheme}{5}{subsection.A.4}%
