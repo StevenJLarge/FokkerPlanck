@@ -131,7 +131,7 @@ def calcHarmonicConstVel(trap_vel: float, trap_strength: float, BC: Optional[str
     beta = 1.0
 
     force_parameters = [k_trap, trap_velocity, D, beta, 0]
-    force_params_fwd = [k_trap, trap_velocity, D, beta, trap_velocity * dt]
+    force_params_fwd = [k_trap, trap_velocity, D, beta, 0.5 * trap_velocity * dt]
 
     xArray = np.arange(-2.0, 2.0, dx)
     obj = Integrator.FPE_Integrator_1D(D, dt, dx, xArray, boundaryCond=BC)
@@ -197,11 +197,11 @@ def genHarmonicWorkPlot(
 
     # Generate work plots
     for i, (w, w_t) in enumerate(zip(work_arr, theory_arr_work)):
-        ax[0].plot(time, w, linewidth=2.0, color=Pal[i], label=vel_labels[i])
         ax[0].plot(
             time, w_t, '--', linewidth=1.0, color='k', alpha=0.6,
             label=(lambda x: "Theory" if x == 0 else None)(i)
         )
+        ax[0].plot(time, w, linewidth=2.0, color=Pal[i], label=vel_labels[i])
 
     # Generate power plots
     for i, (p, p_t) in enumerate(zip(power_arr, theory_arr_power)):
@@ -220,7 +220,6 @@ def genHarmonicWorkPlot(
     plt.close()
 
 
-
 def calcHarmonicPower_theory(
     velocity: float, trap_strength: float, time_tracker: Iterable,
     beta: Optional[float] = 1, D: Optional[float] = 1
@@ -233,7 +232,7 @@ def calcHarmonicPower_theory(
 
 def calcHarmonicWork_theory(
     velocity: float, trap_strength: float, time_tracker: Iterable,
-    beta: Optional[float] = 1, D: Optional[float] = 1 
+    beta: Optional[float] = 1, D: Optional[float] = 1
 ) -> List:
     return (
         ((velocity ** 2) / (beta * D))
@@ -327,8 +326,7 @@ if __name__ == "__main__":
     # runDiffusionTests(write_dir)
 
     # Advection test scenarios
-    runAdvectionTests(write_dir)
-
+    # runAdvectionTests(write_dir)
 
     # Relaxation in a harmonic potential
     runAdvectionDiffusionTests(write_dir)
