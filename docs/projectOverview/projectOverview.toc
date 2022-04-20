@@ -3,6 +3,8 @@
 \contentsline {section}{\numberline {2}Numerical integration: general properties}{3}{section.2}%
 \contentsline {section}{\numberline {3}Stability}{3}{section.3}%
 \contentsline {section}{\numberline {4}Advection}{3}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Boundary conditions}{4}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Constant force}{5}{subsection.4.2}%
 \contentsline {section}{\numberline {5}Diffusion}{5}{section.5}%
 \contentsline {section}{\numberline {6}Fokker-Planck}{5}{section.6}%
 \contentsline {section}{\numberline {7}Driven Harmonic Trap}{5}{section.7}%

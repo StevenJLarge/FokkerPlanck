@@ -125,9 +125,33 @@ where the half-step fluxes are determined through the Lax method:
 \begin{equation}
     p_{i+1/2}^{n+1/2} = \frac{1}{2}\left( p_{i+1}^n + p_{i}^n \right) - \frac{\Delta t}{\Delta x}\left( F_{i+1}^n - F_i^n \right) \label{eq:lw-step-1}
 \end{equation}
-and---as before---the half-step fluxes in Eq.\eqref{eq:lw-step-2} are calcualted as $F_{i\pm1/2}^{n+1/2} \equiv \mu_{i\pm1/2}^{n+1/2}p_{i\pm1/2}^{n+1/2}$.
+and---as before---the half-step fluxes in Eq.\eqref{eq:lw-step-2} are calcualted as $F_{i\pm1/2}^{n+1/2} \equiv \mu_{i\pm1/2}^{n+1/2}p_{i\pm1/2}^{n+1/2}$. More concretely, for the Smoluchowski equation, the flus term $F(x, t) = -D\partial_x E(x, t)p(x, t)$. While this method has relatively few numerical issues, we do need to concern ourselves with structural (Von Neumann) stability. In fact, one can show that, for the Smoluchowski equation, and a system governed by the energy function $E(x, t)$, in order to have stability in the system, we require that
+\begin{equation}
+    \frac{\max_x |\partial_x E | \Delta t}{\Delta x} \leq 1 \label{eq:cfl}
+\end{equation}
+which is the so-called \emph{Courant-Friedrichs-Lewy}, or CFL criterion for this system, which provides an upper bound on the time step that can be used for a given, fixed, degree of time resolution.  Finally, it is worth noting that, like the Lax method, still exhibits a level of numerical dissipation, however, it only appears in the fourth order term, and is thus a significant improvement over the Lax method alone.
 
-\section{Diffusion}
+\subsection{Boundary conditions}
+
+Finally, we need to discuss what to do on the boundaries of the spatial domain. More specifically, given a PDE defined on the spatial domain $x_i$ for $i=0, \cdots, N$, then the specification of the boundaries on the spatial domain will determine how we treat terms with $i=0, N+1$. There are, in general, three different types of boundary conditions that we will be concerned with:
+\begin{itemize}
+    \item{Open}
+    \item{Hard-wall}
+    \item{Periodic}
+\end{itemize}
+Open boundaries represent a situation where the domain of the solution extends beyond the frame that we have access to, and so while we only model the solution over $N+1$ nodes, there do exist potentially nonzero values of the function outside of that realm. In the case of pen voujndaries, concepts like normalization are not enforcable.  For hard-wall boundary conditions, there is no net flux of probability across the boundary, and thus any `flow' into the boundary is reflected back\footnote{This type of boundary condition is also called a `reflecting boundary condition'}. Finally, for periodic boundary conditions, node $0$ and node $N$ are assumed to be the same, and so any flow out of the left boundary (at $i=0$) will enter on the right boundary.
+
+For the advective term, boundary conditions are relatively easy to deal with, however when we get to the diffusive term (Sec.~\ref{sec:diffusion-term}) the implementation of boundary conditions can be come significantly more involved.  However, for the advective term, open boundaries are simply build by setting any probability term that is outside the realm domain of definition to zero
+
+\subsection{Constant force}
+
+To investigate the Lax Wendroff method in action, we consider a Gaussian initial distribution, subject to the energy function $E(x, t) = -kx$, so that the force is $F(x) = k$. In this case, the CFL criterion from Eq.~\eqref{eq:cfl} is 
+\begin{equation}
+    \frac{k\Delta x}{\Delta t} \leq 1 \label{eq:cfl-const} \ .
+\end{equation}
+For the parameters $k = 1$, $\Delta x = 0.01$ and $\Delta t = 0.001$, Fig.~ shows the time-evolution of this system in a periodic boundary condition
+
+\section{\label{sec:diffusion-term}Diffusion}
     % Diffusion terms
 
 \section{Fokker-Planck}

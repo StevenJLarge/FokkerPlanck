@@ -2,11 +2,15 @@
 Filename: Integrator.py
 
 This python script contains the routines used to solve the Fokker-Planck
-equation numerically via a split-integrator scheme with multiple methods
+equation numerically via a split-integrator scheme with a 2-step Lax Wendroff
+method for the forcing term and a semi-implicit Crank-Nicolson scheme for the
+diffusion matrix
 
 Author:         Steven Large
 Created:        August 25th 2019
 Last Modified:  February 13th 2022
+
+Version: 2.0.0
 
 Software:       python 3.7.x (compatible with python 2.x.x and 3.x.x)
 '''
@@ -306,7 +310,7 @@ class FPE_Integrator_1D(BaseIntegrator):
         )
 
         # NOTE Somewhat naively, I would assume that the hard-wall condition is
-        # that ewProb[0] is taken by replacing the self.prob[index-1]with 0 
+        # that newProb[0] is taken by replacing the self.prob[index-1]with 0
         # as there is no existing probability to the left (or right) os the
         # base grid. For periodic conditions, I would expect that we would
         # set the boundaries periodically, and for open
