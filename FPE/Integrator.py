@@ -39,7 +39,6 @@ class FPE_Integrator_1D(BaseIntegrator):
             constDiff
         )
         self.dx = dx
-        # self.dt = dt
 
         self.N = len(xArray)
         self.prob = np.ones(self.N) / (self.N * self.dx)
@@ -62,7 +61,7 @@ class FPE_Integrator_1D(BaseIntegrator):
         self.fluxTracker = 0
 
     def initializeProbability(self, mean: float, var: float):
-        # ANCHOR port this to parent class
+        # ANCHOR port this to parent class?
         self.prob = np.exp(-(0.5 / var) * ((self.xArray - mean)**2))
         self.prob = self.prob / (sum(self.prob) * self.dx)
 

@@ -42,8 +42,15 @@ class ProbabilityWorkTracker(ProbabilityTracker):
 
 
 def calc_normalization(prob: np.ndarray, xVals: np.ndarray) -> float:
-    return si.trapz(prob, xVals)
+    return _calc_moment(prob, xVals, 0)
 
+
+def calc_mean(prob: np.ndarray, xVals: np.ndarray) -> float:
+    return _calc_moment(prob, xVals, 1)
+
+
+def _calc_moment(prob: np.ndarray, xVals: np.ndarray, order: int):
+    return si.trapz(prob * (xVals ** order), xVals)
 
 def calcDiffusion(BC: Optional[str] = "hard-wall") -> ProbabilityTracker:
     dt = 0.005
@@ -96,11 +103,13 @@ def calcAdvection(BC: Optional[str] = "periodic") -> ProbabilityTracker:
     return probRes.report()
 
 
-def calcHarmonicRelaxation(BC: Optional[str] = "periodic") -> ProbabilityTracker:
+def calcHarmonicRelaxation(
+    trap_strength: float, BC: Optional[str] = "periodic"
+) -> ProbabilityTracker:
     dt = 0.001
     dx = 0.0075
     D = 1.0
-    k_trap = 2.0
+    k_trap = trap_strength
     trap_center = 0.5
 
     xArray = np.arange(-2.0, 2.0, dx)
@@ -158,8 +167,10 @@ def calcHarmonicConstVel(trap_vel: float, trap_strength: float, BC: Optional[str
 
 def genTrackingPlot(
     density_tracker: List, time_tracker: List, norm_tracker: List,
-    xArray: np.ndarray, write_name: str, write_path: str,
-    write_format: Optional[str] = "pdf"
+    xArray: np.ndarray, write_name: str, write_name_relax: str,
+    write_path: str, trap_strength: float,
+    write_format: Optional[str] = "pdf",
+    D: Optional[float] = 1.0
 ):
     sns.set(style="darkgrid")
     _, ax = plt.subplots(2, 1, figsize=(6.3, 4.5))
@@ -182,6 +193,25 @@ def genTrackingPlot(
     plt.savefig(os.path.join(write_path, write_name), format=write_format)
     plt.show()
     plt.close()
+
+    _, ax = plt.subplots(1, 1, figsize=(6.3, 3.5))
+    mean_tracker = np.array([calc_mean(dist, xArray) for dist in density_tracker])
+    time_theory = np.linspace(0, time_tracker[-1], 100)
+    relax_theory = np.exp(-trap_strength * time_theory / D)
+
+    mean_tracker /= mean_tracker[0]
+    ax.fill_between(time_theory, relax_theory, color=sns.xkcd_rgb["tomato"], alpha=0.2)
+    ax.plot(time_theory, relax_theory, linewidth=2.5, color=sns.xkcd_rgb["tomato"], label="Theory")
+    ax.plot(
+        time_tracker, mean_tracker, 'o',
+        markersize=7, color=sns.xkcd_rgb["electric blue"],
+        alpha=0.8, label="Simulation"
+    )
+    ax.legend(fontsize=12)
+    ax.set_xlabel(r"Elapsed Time", fontsize=15)
+    ax.set_ylabel(r"Distribution mean $\langle x\rangle$", fontsize=15)
+    plt.tight_layout()
+    plt.savefig(os.path.join(write_path, write_name_relax), format=write_format)
 
 
 def genHarmonicWorkPlot(
@@ -284,10 +314,15 @@ def runAdvectionDiffusionTests(write_dir: str):
     write_name_work = "harmonic_work_theoryCompare.pdf"
 
     print("Working on harmonic relaxation test (PBCs)")
-    density_tracker, time_tracker, norm_tracker, xVals = calcHarmonicRelaxation()
+    trap_strength = 2.0
+    density_tracker, time_tracker, norm_tracker, xVals = calcHarmonicRelaxation(trap_strength)
+    # TODO include tracking of relaxation dynamics (This will help me figure
+    # out whether there is an error in the dynamics of the routine, or if its
+    # in the implementation of work tracking), mean should relax exponentially
+    # towards zero, with relaxation constant given by the trap strength
     genTrackingPlot(
         density_tracker, time_tracker, norm_tracker, xVals, write_name_relax,
-        write_dir
+        write_dir, trap_strength
     )
 
     print("Working on harmonic constant-velosity (PBCs)")
