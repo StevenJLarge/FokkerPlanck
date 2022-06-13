@@ -104,7 +104,8 @@ def mean_tracking_plot_harmonic(
 
 def harmonic_work_plot(
     work_arr: Iterable, power_arr: Iterable, time: Iterable, vel_arr: Iterable,
-    vel_labels: Iterable, trap_strength: float, write_dir: str, write_name: str
+    vel_labels: Iterable, trap_strength: float,
+    write_dir: Optional[str] = None, write_name: Optional[str] = None
 ) -> plt.Axes:
     _configure_visualization_format()
     save_file = _check_input_file_specs
