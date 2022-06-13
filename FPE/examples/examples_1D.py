@@ -53,6 +53,7 @@ def calc_mean(prob: np.ndarray, xVals: np.ndarray) -> float:
 def _calc_moment(prob: np.ndarray, xVals: np.ndarray, order: int):
     return si.trapz(prob * (xVals ** order), xVals)
 
+
 def calcDiffusion(BC: Optional[str] = "hard-wall") -> ProbabilityTracker:
     dt = 0.005
     dx = 0.001
@@ -132,7 +133,9 @@ def calcHarmonicRelaxation(
     return probRes.report()
 
 
-def calcHarmonicConstVel(trap_vel: float, trap_strength: float, BC: Optional[str] = "periodic") -> ProbabilityTracker:
+def calcHarmonicConstVel(
+    trap_vel: float, trap_strength: float, BC: Optional[str] = "periodic"
+) -> ProbabilityTracker:
     dt = 0.001
     dx = 0.0075
     D = 1.0
@@ -234,10 +237,6 @@ def runDiffusionTests(write_dir: str):
         density_tracker, time_tracker, norm_tracker, xVals,
         write_name=write_name_hw, write_path=write_dir
     )
-    # genTrackingPlot(
-    #     density_tracker, time_tracker, norm_tracker, xVals,
-    #     write_name_hw, write_dir
-    # )
 
     print("Working on periodic...")
     density_tracker, time_tracker, norm_tracker, xVals = calcDiffusion(BC="periodic")
@@ -246,21 +245,12 @@ def runDiffusionTests(write_dir: str):
         write_name=write_name_periodic, write_path=write_dir
     )
 
-    # genTrackingPlot(
-    #     density_tracker, time_tracker, norm_tracker, xVals,
-    #     write_name_periodic, write_dir
-    # )
-
     print("Working on open boundary...")
     density_tracker, time_tracker, norm_tracker, xVals = calcDiffusion(BC="open")
     _ = vis.density_tracking_plot(
         density_tracker, time_tracker, norm_tracker, xVals,
         write_name=write_name_open, write_path=write_dir
     )
-    # genTrackingPlot(
-    #     density_tracker, time_tracker, norm_tracker, xVals,
-    #     write_name_open, write_dir
-    # )
 
 
 def runAdvectionTests(write_dir: str):
@@ -271,10 +261,6 @@ def runAdvectionTests(write_dir: str):
         density_tracker, time_tracker, norm_tracker, xVals,
         write_name=write_name, write_path=write_dir
     )
-    # genTrackingPlot(
-    #     density_tracker, time_tracker, norm_tracker, xVals, write_name,
-    #     write_dir
-    # )
 
 
 def runAdvectionDiffusionTests(write_dir: str):
@@ -284,21 +270,20 @@ def runAdvectionDiffusionTests(write_dir: str):
 
     print("Working on harmonic relaxation test (PBCs)")
     trap_strength = 2.0
+    D = 1.0
+
     density_tracker, time_tracker, norm_tracker, xVals = calcHarmonicRelaxation(trap_strength)
-    # TODO include tracking of relaxation dynamics (This will help me figure
-    # out whether there is an error in the dynamics of the routine, or if its
-    # in the implementation of work tracking), mean should relax exponentially
-    # towards zero, with relaxation constant given by the trap strength
     _ = vis.density_tracking_plot(
         density_tracker, time_tracker, norm_tracker, xVals,
         write_name=write_name_relax, write_path=write_dir
     )
 
-    #_ = vis.mean_tracking_plot_harmonic(trap_strength)
-    # genTrackingPlot(
-    #     density_tracker, time_tracker, norm_tracker, xVals, write_name_relax,
-    #     write_dir, trap_strength
-    # )
+    mean_tracker = [calc_mean(density) for density in density_tracker]
+
+    _ = vis.mean_tracking_plot_harmonic(
+        trap_strength, D, mean_tracker, time_tracker,
+        write_name=write_name_relax, write_path=write_dir
+    )
 
     print("Working on harmonic constant-velosity (PBCs)")
 
@@ -319,10 +304,6 @@ def runAdvectionDiffusionTests(write_dir: str):
         dens_track_1, t_track_1, n_track_1, x_1,
         write_name=write_name_constVel, write_path=write_dir
     )
-    # genTrackingPlot(
-    #     dens_track_1, t_track_1, n_track_1, x_1, write_name_constVel,
-    #     write_dir
-    # )
 
     genHarmonicWorkPlot(
         [w_track_0, w_track_1, w_track_2],

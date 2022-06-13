@@ -204,13 +204,15 @@ class FPE_Integrator_1D(BaseIntegrator):
         self, forceFunction: Callable, forceParams: Tuple, deltaT: float,
         idx: int
     ) -> float:
+        # NOTE Added in factor of 1/2 here because the timesteps are only
+        # 'half' timesteps
         fluxFw = (
-            (self.D * deltaT / (self.dx))
+            (self.D * deltaT / (2 * self.dx))
             * forceFunction(self.xArray[(idx + 1) % len(self.xArray)], forceParams)
             * self.prob[(idx + 1) % len(self.xArray)]
         )
         fluxRev = (
-            (self.D * deltaT / (self.dx))
+            (self.D * deltaT / (2 * self.dx))
             * forceFunction(self.xArray[idx], forceParams)
             * self.prob[idx]
         )
