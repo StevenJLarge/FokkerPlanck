@@ -242,7 +242,8 @@ class FPE_Integrator_1D(BaseIntegrator):
             )
             # NOTE Also have factor of 1/2 here (see below)?
             halfFlux[i + 1] = (
-                # 0.5 *
+                # NOTE ADDED IN TEMPORARILY
+                0.5 *
                 forceFunction(self.xArray[i] + 0.5 * self.dx, forceParams) * halfProb[i + 1]
             )
 
@@ -253,7 +254,7 @@ class FPE_Integrator_1D(BaseIntegrator):
                 0.5 * (self.prob[0] + self.prob[-1])
                 # NOTE Added factor of 0.5 here
                 # NOTE I dont think  this factor is needed...
-                # - 0.5 * 
+                # - 0.5 *
                 - self._getFluxDiff_LaxWendroff(
                     forceFunction, forceParams, deltaT, len(self.prob) - 1
                 )

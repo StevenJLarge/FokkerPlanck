@@ -321,7 +321,7 @@ if __name__ == "__main__":
     # runDiffusionTests(write_dir)
 
     # Advection test scenarios
-    # runAdvectionTests(write_dir)
+    runAdvectionTests(write_dir)
 
     # Relaxation in a harmonic potential
-    runAdvectionDiffusionTests(write_dir)
+    # runAdvectionDiffusionTests(write_dir)
