@@ -242,7 +242,7 @@ class FPE_Integrator_1D(BaseIntegrator):
             )
             # NOTE Also have factor of 1/2 here (see below)?
             halfFlux[i + 1] = (
-                # NOTE ADDED IN TEMPORARILY
+                # NOTE ADDED IN TEMPORARILY, this seems to work? Check the units of everything...
                 0.5 *
                 forceFunction(self.xArray[i] + 0.5 * self.dx, forceParams) * halfProb[i + 1]
             )
@@ -263,6 +263,8 @@ class FPE_Integrator_1D(BaseIntegrator):
             # Seems to make the calculations work...
             halfFlux[0] = (
                 # 0.5 *
+                # NOTE ALSO ADDED IN TEMPORARILY
+                0.5 *
                 forceFunction(self.xArray[0] - 0.5 * self.dx, forceParams) * halfProb[0]
             )
             halfFlux[-1] = halfFlux[0]
