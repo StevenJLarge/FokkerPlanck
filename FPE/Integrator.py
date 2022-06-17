@@ -259,6 +259,12 @@ class FPE_Integrator_1D(BaseIntegrator):
                     forceFunction, forceParams, deltaT, len(self.prob) - 1
                 )
             )
+
+            # NOTE Added this in
+            halfProb[-1] = (
+                0.5 * (self.prob[-1] + self.prob[0])
+                - self._getFluxDiff_LaxWendroff(forceFunction, forceParams, deltaT, 0)
+            )
             # NOTE Same factor of 1/2 here as well.
             # Seems to make the calculations work...
             halfFlux[0] = (
@@ -267,7 +273,11 @@ class FPE_Integrator_1D(BaseIntegrator):
                 0.5 *
                 forceFunction(self.xArray[0] - 0.5 * self.dx, forceParams) * halfProb[0]
             )
-            halfFlux[-1] = halfFlux[0]
+            # NOTE Added this in as well
+            # halfFlux[-1] = halfFlux[0]
+            halfFlux[-1] = (
+                0.5 * forceFunction(self.xArray[-1] - 0.5 * self.dx, forceParams) * halfProb[-1]
+            )
 
         # NOTE For open BCs, there are currently no modifications to the
         # specification of boundary terms. I think this is incorrect?
