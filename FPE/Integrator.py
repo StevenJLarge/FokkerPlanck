@@ -268,16 +268,34 @@ class FPE_Integrator_1D(BaseIntegrator):
             # NOTE Same factor of 1/2 here as well.
             # Seems to make the calculations work...
             halfFlux[0] = (
-                # 0.5 *
                 # NOTE ALSO ADDED IN TEMPORARILY
                 0.5 *
                 forceFunction(self.xArray[0] - 0.5 * self.dx, forceParams) * halfProb[0]
             )
-            # NOTE Added this in as well
-            # halfFlux[-1] = halfFlux[0]
-            halfFlux[-1] = (
-                0.5 * forceFunction(self.xArray[-1] - 0.5 * self.dx, forceParams) * halfProb[-1]
+            halfFlux[-1] = halfFlux[0]
+
+        elif self.BC == "open":
+
+            fluxFw = (
+                (self.D * deltaT / (2 * self.dx))
+                * forceFunction(self.xArray[0], forceParams)
+                * self.prob[0]
             )
+            fluxRev = (
+                (self.D * deltaT / (2 * self.dx))
+                * forceFunction(self.xArray[-1], forceParams)
+                * self.prob[-1]
+            )
+
+            halfProb[0] = 0.5 * self.prob[0] - fluxFw
+            halfProb[-1] = 0.5 * self.prob[-1] + fluxRev
+            halfFlux[0] = 0.5 * forceFunction(self.xArray[0] - 0.5 * self.dx, forceParams) * halfProb[0]
+            halfFlux[-1] = 0.5 * forceFunction(self.xArray[-1] + 0.5 * self.dx, forceParams) * halfProb[-1]
+
+        # else:
+            # Hard wall boundaries
+            # halfFlux[0] = 0
+            # halfFlux[-1] = 0
 
         # NOTE For open BCs, there are currently no modifications to the
         # specification of boundary terms. I think this is incorrect?
