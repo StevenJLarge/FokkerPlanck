@@ -204,8 +204,6 @@ class FPE_Integrator_1D(BaseIntegrator):
         self, forceFunction: Callable, forceParams: Tuple, deltaT: float,
         idx: int
     ) -> float:
-        # NOTE Added in factor of 1/2 here because the timesteps are only
-        # 'half' timesteps
         fluxFw = (
             (self.D * deltaT / (2 * self.dx))
             * forceFunction(self.xArray[(idx + 1) % len(self.xArray)], forceParams)
@@ -231,44 +229,28 @@ class FPE_Integrator_1D(BaseIntegrator):
 
             halfProb[i + 1] = (
                 0.5 * (self.prob[i + 1] + self.prob[i])
-                # BUG There was an inconsistency between the differet iBCs for
-                # this, HW had a factor of 1/2 in front of the flux difference,
-                # check this
-                # NOTE INcorporated prefactor into subroutine, but I still think there
-                # needs to be a factor of 1/2 out front because we are calculating
-                # a half-step probability update, so dt -> 0.5 dt
-                # Removed factor of 0.5 here
                 - self._getFluxDiff_LaxWendroff(forceFunction, forceParams, deltaT, i)
             )
-            # NOTE Also have factor of 1/2 here (see below)?
             halfFlux[i + 1] = (
-                # NOTE ADDED IN TEMPORARILY, this seems to work? Check the units of everything...
                 0.5 *
                 forceFunction(self.xArray[i] + 0.5 * self.dx, forceParams) * halfProb[i + 1]
             )
 
-        # For HW noting ele needs to be done
-        # For periodic need to specify boundaries (self.N-1 index)
+        # Boundary terms
         if self.BC == 'periodic':
             halfProb[0] = (
                 0.5 * (self.prob[0] + self.prob[-1])
-                # NOTE Added factor of 0.5 here
-                # NOTE I dont think  this factor is needed...
-                # - 0.5 *
                 - self._getFluxDiff_LaxWendroff(
                     forceFunction, forceParams, deltaT, len(self.prob) - 1
                 )
             )
 
-            # NOTE Added this in
             halfProb[-1] = (
                 0.5 * (self.prob[-1] + self.prob[0])
                 - self._getFluxDiff_LaxWendroff(forceFunction, forceParams, deltaT, 0)
             )
-            # NOTE Same factor of 1/2 here as well.
-            # Seems to make the calculations work...
+ 
             halfFlux[0] = (
-                # NOTE ALSO ADDED IN TEMPORARILY
                 0.5 *
                 forceFunction(self.xArray[0] - 0.5 * self.dx, forceParams) * halfProb[0]
             )
@@ -286,20 +268,18 @@ class FPE_Integrator_1D(BaseIntegrator):
                 * forceFunction(self.xArray[-1], forceParams)
                 * self.prob[-1]
             )
-
             halfProb[0] = 0.5 * self.prob[0] - fluxFw
             halfProb[-1] = 0.5 * self.prob[-1] + fluxRev
             halfFlux[0] = 0.5 * forceFunction(self.xArray[0] - 0.5 * self.dx, forceParams) * halfProb[0]
             halfFlux[-1] = 0.5 * forceFunction(self.xArray[-1] + 0.5 * self.dx, forceParams) * halfProb[-1]
 
-        # else:
+        else:
             # Hard wall boundaries
-            # halfFlux[0] = 0
-            # halfFlux[-1] = 0
+            halfProb[0] = 0.5 * self.prob[0]
+            halfProb[-1] = 0.5 * self.prob[-1]
+            halfFlux[0] = 0.5 * forceFunction(self.xArray[0] - 0.5 * self.dx, forceParams) * halfProb[0]
+            halfFlux[-1] = 0.5 * forceFunction(self.xArray[0] - 0.5 * self.dx, forceParams) * halfProb[-1]
 
-        # NOTE For open BCs, there are currently no modifications to the
-        # specification of boundary terms. I think this is incorrect?
-        # elif self.BC == "open":
         return halfProb, halfFlux
 
     def laxWendroff(
