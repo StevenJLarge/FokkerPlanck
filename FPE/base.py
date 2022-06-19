@@ -4,7 +4,6 @@ from abc import ABC, abstractclassmethod
 from typing import Callable, Optional, Tuple, Union
 import numpy as np
 import time
-import warnings
 import scipy.sparse
 
 from FPE import config
