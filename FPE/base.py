@@ -32,7 +32,13 @@ class BaseIntegrator(ABC):
 
         # Instantiate the instance directives
         self.diffScheme = diffScheme    # Integration scheme for diffusion term
-        self.adScheme = adScheme        # Integration scheme for advection term
+        # self.adScheme = adScheme        # Integration scheme for advection term
+        if self.adScheme != "lax_wendroff":
+            raise DeprecationWarning(
+                "Alternate advection methods take out of algorithm, default"
+                + "to LW, in a future version this will raise an error "
+            )
+        self.adScheme = "lax-wendroff"
         self.BC = boundaryCond          # Boundary conditions
         self.splitMethod = splitMethod  # Integator splitting method
         self.constDiff = constDiff      # Flag for if diffusion matrix is cost
@@ -56,8 +62,8 @@ class BaseIntegrator(ABC):
         if diffScheme not in config.diffSchemes:
             raise ValueError("diffScheme not recognized, see config file")
 
-        if adScheme not in config.adSchemes:
-            raise ValueError("adScheme not recognized, see config file")
+        # if adScheme not in config.adSchemes:
+        #     raise ValueError("adScheme not recognized, see config file")
 
         if boundaryCond not in config.boundaryConditions:
             raise ValueError(
@@ -191,12 +197,9 @@ class BaseIntegrator(ABC):
     def advectionUpdate(
         self, forceParams: Tuple, forceFunction: Callable, deltaT: float
     ):
-        if(self.adScheme == 'lax-wendroff' or self.adScheme == 'lw'):
-            self.laxWendroff(forceParams, forceFunction, deltaT)
-        if(self.adScheme == 'lax' or self.adScheme == 'l'):
-            self.lax(forceParams, forceFunction, deltaT)
-        else:
-            self.laxWendroff(forceParams, forceFunction, deltaT)
+        # There is now only the one advection method that is stable, so this
+        # will be used 
+        self.laxWendroff(forceParams, forceFunction, deltaT)
 
     def integrate_step(self, forceParams: Tuple, forceFunction: Callable):
         if(self.splitMethod == 'lie'):
