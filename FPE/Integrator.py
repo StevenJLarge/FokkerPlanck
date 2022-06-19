@@ -1026,3 +1026,13 @@ class FPE_integrator_2D:
         self.dt = tempdt
         # Update self.prob vector with result
         self.prob = np.reshape(prob_mat, self.Nx * self.Ny)
+
+
+if __name__ == "__main__":
+    D = 1
+    dx = 0.01
+    dt = 0.01
+    x_array = np.arange(-1, 1, dx)
+    fpe = FPE_Integrator_1D(D, dt, dx, x_array)
+
+    print("-- DONE --")

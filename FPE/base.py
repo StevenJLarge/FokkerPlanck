@@ -33,9 +33,9 @@ class BaseIntegrator(ABC):
         # Instantiate the instance directives
         self.diffScheme = diffScheme    # Integration scheme for diffusion term
         # self.adScheme = adScheme        # Integration scheme for advection term
-        if self.adScheme != "lax_wendroff":
+        if adScheme != "lax-wendroff":
             raise DeprecationWarning(
-                "Alternate advection methods take out of algorithm, default"
+                "Alternate advection methods unavailable, defaulting"
                 + "to LW, in a future version this will raise an error "
             )
         self.adScheme = "lax-wendroff"
@@ -257,6 +257,6 @@ class BaseIntegrator(ABC):
     def laxWendroff(self, *args, **kwargs):
         pass
 
-    @abstractclassmethod
-    def lax(self, *args, **kwargs):
-        pass
+    # @abstractclassmethod
+    # def lax(self, *args, **kwargs):
+    #     pass

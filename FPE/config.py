@@ -7,7 +7,7 @@ diffSchemes = [
 ]
 
 adSchemes = [
-    "lax",
+    # "lax",
     "lax-wendroff"
 ]
 
