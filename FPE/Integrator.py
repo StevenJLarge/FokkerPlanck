@@ -19,7 +19,6 @@ from typing import Callable, Optional, Tuple
 import numpy as np
 import scipy.sparse
 import time
-# import forceFunctions as ff
 from FPE.base import BaseIntegrator
 
 
