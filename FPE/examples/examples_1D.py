@@ -8,6 +8,7 @@ import numpy as np
 import scipy.integrate as si
 from FPE import Integrator
 import FPE.forceFunctions as ff
+import FPE.visualizations.examples as vis
 
 from pathlib import Path
 
@@ -42,7 +43,15 @@ class ProbabilityWorkTracker(ProbabilityTracker):
 
 
 def calc_normalization(prob: np.ndarray, xVals: np.ndarray) -> float:
-    return si.trapz(prob, xVals)
+    return _calc_moment(prob, xVals, 0)
+
+
+def calc_mean(prob: np.ndarray, xVals: np.ndarray) -> float:
+    return _calc_moment(prob, xVals, 1)
+
+
+def _calc_moment(prob: np.ndarray, xVals: np.ndarray, order: int):
+    return si.trapz(prob * (xVals ** order), xVals)
 
 
 def calcDiffusion(BC: Optional[str] = "hard-wall") -> ProbabilityTracker:
@@ -73,7 +82,7 @@ def calcDiffusion(BC: Optional[str] = "hard-wall") -> ProbabilityTracker:
 
 def calcAdvection(BC: Optional[str] = "periodic") -> ProbabilityTracker:
     dt = 0.00125
-    dx = 0.001
+    dx = 0.002
     D = 1.0
     kVal = 1.0
 
@@ -96,11 +105,13 @@ def calcAdvection(BC: Optional[str] = "periodic") -> ProbabilityTracker:
     return probRes.report()
 
 
-def calcHarmonicRelaxation(BC: Optional[str] = "periodic") -> ProbabilityTracker:
+def calcHarmonicRelaxation(
+    trap_strength: float, BC: Optional[str] = "periodic"
+) -> ProbabilityTracker:
     dt = 0.001
     dx = 0.0075
     D = 1.0
-    k_trap = 2.0
+    k_trap = trap_strength
     trap_center = 0.5
 
     xArray = np.arange(-2.0, 2.0, dx)
@@ -122,7 +133,9 @@ def calcHarmonicRelaxation(BC: Optional[str] = "periodic") -> ProbabilityTracker
     return probRes.report()
 
 
-def calcHarmonicConstVel(trap_vel: float, trap_strength: float, BC: Optional[str] = "periodic") -> ProbabilityTracker:
+def calcHarmonicConstVel(
+    trap_vel: float, trap_strength: float, BC: Optional[str] = "periodic"
+) -> ProbabilityTracker:
     dt = 0.001
     dx = 0.0075
     D = 1.0
@@ -131,7 +144,7 @@ def calcHarmonicConstVel(trap_vel: float, trap_strength: float, BC: Optional[str
     beta = 1.0
 
     force_parameters = [k_trap, trap_velocity, D, beta, 0]
-    force_params_fwd = [k_trap, trap_velocity, D, beta, trap_velocity * dt]
+    force_params_fwd = [k_trap, trap_velocity, D, beta, 0.5 * trap_velocity * dt]
 
     xArray = np.arange(-2.0, 2.0, dx)
     obj = Integrator.FPE_Integrator_1D(D, dt, dx, xArray, boundaryCond=BC)
@@ -156,34 +169,6 @@ def calcHarmonicConstVel(trap_vel: float, trap_strength: float, BC: Optional[str
     return probRes.report(obj)
 
 
-def genTrackingPlot(
-    density_tracker: List, time_tracker: List, norm_tracker: List,
-    xArray: np.ndarray, write_name: str, write_path: str,
-    write_format: Optional[str] = "pdf"
-):
-    sns.set(style="darkgrid")
-    _, ax = plt.subplots(2, 1, figsize=(6.3, 4.5))
-    Pal = sns.color_palette("Spectral", len(density_tracker))
-
-    for i, prob in enumerate(density_tracker):
-        ax[0].plot(xArray, prob, linewidth=2.5, color=Pal[i])
-
-    ax[1].plot(time_tracker, norm_tracker, linewidth=2.5, color='k')
-
-    ax[0].set_xlabel(r"Position $x$", fontsize=15)
-    ax[0].set_ylabel(r"$p(x)$", fontsize=15)
-
-    ax[1].set_xlabel(r"Time $t$", fontsize=15)
-    ax[1].set_ylabel(r"$\sum p(x_i)\Delta x_i$", fontsize=15)
-
-    ax[1].set_ylim([0, 1.1])
-
-    plt.tight_layout()
-    plt.savefig(os.path.join(write_path, write_name), format=write_format)
-    plt.show()
-    plt.close()
-
-
 def genHarmonicWorkPlot(
     work_arr: List, power_arr: List, time: List, vel_arr: List,
     vel_labels: List, trap_strength: float, write_dir: str, write_name: str
@@ -197,11 +182,11 @@ def genHarmonicWorkPlot(
 
     # Generate work plots
     for i, (w, w_t) in enumerate(zip(work_arr, theory_arr_work)):
-        ax[0].plot(time, w, linewidth=2.0, color=Pal[i], label=vel_labels[i])
         ax[0].plot(
             time, w_t, '--', linewidth=1.0, color='k', alpha=0.6,
             label=(lambda x: "Theory" if x == 0 else None)(i)
         )
+        ax[0].plot(time, w, linewidth=2.0, color=Pal[i], label=vel_labels[i])
 
     # Generate power plots
     for i, (p, p_t) in enumerate(zip(power_arr, theory_arr_power)):
@@ -220,7 +205,6 @@ def genHarmonicWorkPlot(
     plt.close()
 
 
-
 def calcHarmonicPower_theory(
     velocity: float, trap_strength: float, time_tracker: Iterable,
     beta: Optional[float] = 1, D: Optional[float] = 1
@@ -233,7 +217,7 @@ def calcHarmonicPower_theory(
 
 def calcHarmonicWork_theory(
     velocity: float, trap_strength: float, time_tracker: Iterable,
-    beta: Optional[float] = 1, D: Optional[float] = 1 
+    beta: Optional[float] = 1, D: Optional[float] = 1
 ) -> List:
     return (
         ((velocity ** 2) / (beta * D))
@@ -249,23 +233,23 @@ def runDiffusionTests(write_dir: str):
 
     print("Working on hard-wall...")
     density_tracker, time_tracker, norm_tracker, xVals = calcDiffusion()
-    genTrackingPlot(
+    _ = vis.density_tracking_plot(
         density_tracker, time_tracker, norm_tracker, xVals,
-        write_name_hw, write_dir
+        write_name=write_name_hw, write_path=write_dir
     )
 
     print("Working on periodic...")
     density_tracker, time_tracker, norm_tracker, xVals = calcDiffusion(BC="periodic")
-    genTrackingPlot(
+    _ = vis.density_tracking_plot(
         density_tracker, time_tracker, norm_tracker, xVals,
-        write_name_periodic, write_dir
+        write_name=write_name_periodic, write_path=write_dir
     )
 
     print("Working on open boundary...")
     density_tracker, time_tracker, norm_tracker, xVals = calcDiffusion(BC="open")
-    genTrackingPlot(
+    _ = vis.density_tracking_plot(
         density_tracker, time_tracker, norm_tracker, xVals,
-        write_name_open, write_dir
+        write_name=write_name_open, write_path=write_dir
     )
 
 
@@ -273,9 +257,9 @@ def runAdvectionTests(write_dir: str):
     write_name = "advection_test_constForce.pdf"
     print("working on advection test (PBCs)")
     density_tracker, time_tracker, norm_tracker, xVals = calcAdvection()
-    genTrackingPlot(
-        density_tracker, time_tracker, norm_tracker, xVals, write_name,
-        write_dir
+    _ = vis.density_tracking_plot(
+        density_tracker, time_tracker, norm_tracker, xVals,
+        write_name=write_name, write_path=write_dir
     )
 
 
@@ -285,10 +269,20 @@ def runAdvectionDiffusionTests(write_dir: str):
     write_name_work = "harmonic_work_theoryCompare.pdf"
 
     print("Working on harmonic relaxation test (PBCs)")
-    density_tracker, time_tracker, norm_tracker, xVals = calcHarmonicRelaxation()
-    genTrackingPlot(
-        density_tracker, time_tracker, norm_tracker, xVals, write_name_relax,
-        write_dir
+    trap_strength = 2.0
+    D = 1.0
+
+    density_tracker, time_tracker, norm_tracker, xVals = calcHarmonicRelaxation(trap_strength)
+    _ = vis.density_tracking_plot(
+        density_tracker, time_tracker, norm_tracker, xVals,
+        write_name=write_name_relax, write_path=write_dir
+    )
+
+    mean_tracker = [calc_mean(density) for density in density_tracker]
+
+    _ = vis.mean_tracking_plot_harmonic(
+        trap_strength, D, mean_tracker, time_tracker,
+        write_name=write_name_relax, write_path=write_dir
     )
 
     print("Working on harmonic constant-velosity (PBCs)")
@@ -306,9 +300,9 @@ def runAdvectionDiffusionTests(write_dir: str):
     print(f"Velocity --> {vel_arr[2]}...")
     w_track_2, p_track_2, _, _, _, _, _ = calcHarmonicConstVel(vel_arr[2], trap_strength)
 
-    genTrackingPlot(
-        dens_track_1, t_track_1, n_track_1, x_1, write_name_constVel,
-        write_dir
+    _ = vis.density_tracking_plot(
+        dens_track_1, t_track_1, n_track_1, x_1,
+        write_name=write_name_constVel, write_path=write_dir
     )
 
     genHarmonicWorkPlot(
@@ -327,8 +321,7 @@ if __name__ == "__main__":
     # runDiffusionTests(write_dir)
 
     # Advection test scenarios
-    # runAdvectionTests(write_dir)
-
+    runAdvectionTests(write_dir)
 
     # Relaxation in a harmonic potential
-    runAdvectionDiffusionTests(write_dir)
+    # runAdvectionDiffusionTests(write_dir)

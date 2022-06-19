@@ -61,6 +61,19 @@ where $p(x, t)$ is the space- and time-dependent probability density function of
 The Fokker-Planck equation is a tremendously important relation in the study of all types of stochastic systems. Starting from the most basic `continuity equation' of stochastic processes---the Chapman-Kolmogorov equation---one can show that, under a set of reasonable assumptions on the continuity and smoothness of the process itself, the governing dynamics at the level of a probability distribution is the Fokker-Planck equation.  Put simply, the Fokker-Planck equation takes the form of a 2nd order parabolic partial differential equation, describing the time-dependent evolution of a probability distribution (among other things).
 % Superset of other important equations
 
+
+\begin{equation}
+    \partial_t p(\bs{x}) = -\sum_{i=1}^{N}\partial_{x_i}\left[ \mu(\bs{x}, t) p(\bs{x}, t) \right] + \sum_{i,j = 1}^N \partial_{x_i, x_j}^2 \left[ D_{ij}(\bs{x}, t) p(\bs{x}, t) \right] \label{eq:fokker-planck-general}
+\end{equation}
+
+\begin{equation}
+    \partial_t p(x, t) = -\partial_x \left[ \mu(x, t)p(x, t) \right] + D\partial_{xx}^2p(x, t) \label{eq:fokker-planck-1D}
+\end{equation}
+
+\begin{equation}
+    \partial_t p(x, t) = \beta D \partial_x\left[ \partial_x E(x, t) p(x, t) \right] + D\partial_{xx}^2 p(x, t) \label{eq:smoluchowski}
+\end{equation}
+
 \part{Numerical Integration}
 
 
@@ -69,20 +82,82 @@ The Fokker-Planck equation is a tremendously important relation in the study of 
 % Introduce general discretization schemes
 The central difficulty in solving PDEs is finding an accurate discrete representation of the function and its evolution so that the continuous-space aspects are preserved.  While this may naively seem like a relatively straightforward task, there is a tremendous subtlety to the particular way in which the equations are discretized, with many possible techniques, each having its own benefits and drawbacks.
 
-For the case fo simplicity and concreteness, we will focus on a PDE with one spatial dimension for the time being, and will generalize to multiple spatial dimensions later on. For such a system, the solution to the PDE is given
+For the case fo simplicity and concreteness, we will focus on a PDE with one spatial dimension for the time being, and will generalize to multiple spatial dimensions later on. For such a system, the PDE go erning the system dynamics is
 
-    \section{Stability}
+\section{Stability}
 
-    \section{Advection}
-    % Advection terms
+% Discuss integrator splitting here as a means of segregating the simplifying stability analysis if different terms in the equation.
 
-    \section{Diffusion}
+\section{Advection}
+% Advection terms
+To start, we focus on the \textit{advection} term in the Fokker-Planck equation [Eq.~\eqref{eq:fokker-planck-1D}]:
+\begin{equation}
+    \partial_t p(x, t) = -\partial_x \left[ \mu(x, t) p(x, t) \right] \label{eq:advection-general} \ .
+\end{equation}
+In this case, there is no diffusive component to the motion.  For integrating this component of the dynamics, we first introduce the Lax method. In itself, the Lax method is a relatively straightforward modification to the standard Euler scheme, approximating the spatial derivative with a centered difference and the temporal derivative with a form of centered difference utilizing the centered average $\tfrac{1}{2}(p_{i-1}^n + p_{i+1}^n)$ in place of the $p_i^n$ term in the usal form of the Euler scheme:
+\begin{subequations}
+\begin{align}
+    \partial_t p(x, t) \quad &\to \quad \frac{1}{\Delta t}\left[ p_i^{n+1} - \frac{1}{2}\left( p_{i-1}^n + p_{i+1}^n \right)\right] \label{eq:lax-time-deriv} \\
+    \partial_x\left[ \mu(x, t)p(x, t) \right] \quad &\to \quad \frac{1}{2\Delta x}\left( F_{i+1}^n + F_{i-1}^n \right) \label{eq:lax-space-deriv}
+\end{align}
+\end{subequations}
+where $F_{i}^n \equiv \mu_i^np_i^n$ is the flux throguh state $i$ at time $n$.  While the Lax method's seemingly inconsequential replacement of $p_i^n$ in the temporal derivative with its centered average turns out to remedy a large number of the numerical instabilities found in the straightforward Euler discretization scheme.
+
+More concretely, while the Euler scheme applied to advective equations of the form in Eq.~\eqref{eq:advection-general} will be \emph{unconditionally unstable} in the Neumann analysis sense (see Appendix~\ref{app:neumann-analysis}), a problem which is not present in the Lax method. Specifically, one can show that the discretization scheme will be stable so long as the inequality
+\begin{equation}
+    \frac{\max|\mu(x, t)|\Delta t}{\Delta x} \leq 1 \label{eq:lax-cfl}
+\end{equation}
+is satisfied. Eq.~\eqref{eq:lax-cfl} is an example of a \emph{Courant-Fredrichs-Lewy} (or CFL) cirterion, which is the condition that must be met for Neumann stability to hold.  However, even if the CFL criteria is met, the system will still exhibit inaccuracy due to the phenomenon of numerical dissipation. For the sake on concreteness, we can write the Lax approximation to the advection equation as the update equation
+\begin{equation}
+    p_i^{n+1} = \frac{1}{2}\left( p_{i+1}^n + p_{i-1}^n \right) - \frac{\Delta t}{2\Delta x}\left( F_{i+1}^n - F_{i-1}^n \right) \label{eq:lax-explicity}
+\end{equation}
+which can be re-ordered to mirror the structure of the FTCS approximation as
+\begin{equation}
+    \frac{p_{i}^{n+1} - p_{i}^{n}}{\Delta t} = \frac{-1}{2\Delta x}\left( F_{i+1}^n - F_{i-1}^n \right) + \frac{1}{2\Delta t}\left( p_{i+1}^n - 2p_i^n + p_{i-1}^n  \right) \ ,
+\end{equation}
+which is exactly the FCTS discretization for an advection-diffusion equation. Thus, the differencing scheme, while stable, represents the numerical evolution of an equation with a diffusive term--even though the equation we are trying to represent [Eq.~\eqref{eq:advection-general}] contains no such term. For this reason, the Lax method is said to display numerical dissipation, which can lead to inaccuracies in the solutions.
+
+Given that, for our purposes, this numerical dissipation is worrisome, we use instead a modification of the Lax method---known as the two-step Lax-Wendroff method---which cures the numerical dissipation of the Lax method while maining the same stability. Here, the modification comes through defining half-step fluxes so that we can update the probability $p_i^n$ using the standard FTCS method with half-time and half-space qualtities
+\begin{equation}
+    p_i^{n+1} = p_i^n + \frac{\Delta t}{\Delta x}\left( F_{i+1/2}^{n+1/2} - F_{i-1/2}^{n+1/2} \right) \label{eq:lw-step-2}
+\end{equation}
+where the half-step fluxes are determined through the Lax method:
+\begin{equation}
+    p_{i+1/2}^{n+1/2} = \frac{1}{2}\left( p_{i+1}^n + p_{i}^n \right) - \frac{\Delta t}{\Delta x}\left( F_{i+1}^n - F_i^n \right) \label{eq:lw-step-1}
+\end{equation}
+and---as before---the half-step fluxes in Eq.\eqref{eq:lw-step-2} are calcualted as $F_{i\pm1/2}^{n+1/2} \equiv \mu_{i\pm1/2}^{n+1/2}p_{i\pm1/2}^{n+1/2}$. More concretely, for the Smoluchowski equation, the flus term $F(x, t) = -D\partial_x E(x, t)p(x, t)$. While this method has relatively few numerical issues, we do need to concern ourselves with structural (Von Neumann) stability. In fact, one can show that, for the Smoluchowski equation, and a system governed by the energy function $E(x, t)$, in order to have stability in the system, we require that
+\begin{equation}
+    \frac{\max_x |\partial_x E | \Delta t}{\Delta x} \leq 1 \label{eq:cfl}
+\end{equation}
+which is the so-called \emph{Courant-Friedrichs-Lewy}, or CFL criterion for this system, which provides an upper bound on the time step that can be used for a given, fixed, degree of time resolution.  Finally, it is worth noting that, like the Lax method, still exhibits a level of numerical dissipation, however, it only appears in the fourth order term, and is thus a significant improvement over the Lax method alone.
+
+\subsection{Boundary conditions}
+
+Finally, we need to discuss what to do on the boundaries of the spatial domain. More specifically, given a PDE defined on the spatial domain $x_i$ for $i=0, \cdots, N$, then the specification of the boundaries on the spatial domain will determine how we treat terms with $i=0, N+1$. There are, in general, three different types of boundary conditions that we will be concerned with:
+\begin{itemize}
+    \item{Open}
+    \item{Hard-wall}
+    \item{Periodic}
+\end{itemize}
+Open boundaries represent a situation where the domain of the solution extends beyond the frame that we have access to, and so while we only model the solution over $N+1$ nodes, there do exist potentially nonzero values of the function outside of that realm. In the case of pen voujndaries, concepts like normalization are not enforcable.  For hard-wall boundary conditions, there is no net flux of probability across the boundary, and thus any `flow' into the boundary is reflected back\footnote{This type of boundary condition is also called a `reflecting boundary condition'}. Finally, for periodic boundary conditions, node $0$ and node $N$ are assumed to be the same, and so any flow out of the left boundary (at $i=0$) will enter on the right boundary.
+
+For the advective term, boundary conditions are relatively easy to deal with, however when we get to the diffusive term (Sec.~\ref{sec:diffusion-term}) the implementation of boundary conditions can be come significantly more involved.  However, for the advective term, open boundaries are simply build by setting any probability term that is outside the realm domain of definition to zero
+
+\subsection{Constant force}
+
+To investigate the Lax Wendroff method in action, we consider a Gaussian initial distribution, subject to the energy function $E(x, t) = -kx$, so that the force is $F(x) = k$. In this case, the CFL criterion from Eq.~\eqref{eq:cfl} is 
+\begin{equation}
+    \frac{k\Delta x}{\Delta t} \leq 1 \label{eq:cfl-const} \ .
+\end{equation}
+For the parameters $k = 1$, $\Delta x = 0.01$ and $\Delta t = 0.001$, Fig.~ shows the time-evolution of this system in a periodic boundary condition
+
+\section{\label{sec:diffusion-term}Diffusion}
     % Diffusion terms
 
-    \section{Fokker-Planck}
+\section{Fokker-Planck}
 
 
-    \section{Driven Harmonic Trap}
+\section{Driven Harmonic Trap}
 
     \subsection{Excess Work in a Translating Track}
 
@@ -107,6 +182,19 @@ For the case fo simplicity and concreteness, we will focus on a PDE with one spa
 
 \part{Steady-state solutions}
 
-    % Work through this section on relaxation methods
+% Work through this section on relaxation methods
+
+
+\appendix
+
+\section{\label{app:neumann}Neumann stability analysis}
+
+\subsection{FCTS Scheme: advection and diffusion}
+
+\subsection{Advection: Lax scheme}
+
+\subsection{Advection: Lax-Wendroff scheme}
+
+\subsection{Diffusion: Crank-Nicolson Scheme}
 
 \end{document}

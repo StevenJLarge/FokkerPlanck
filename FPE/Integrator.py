@@ -2,11 +2,15 @@
 Filename: Integrator.py
 
 This python script contains the routines used to solve the Fokker-Planck
-equation numerically via a split-integrator scheme with multiple methods
+equation numerically via a split-integrator scheme with a 2-step Lax Wendroff
+method for the forcing term and a semi-implicit Crank-Nicolson scheme for the
+diffusion matrix
 
 Author:         Steven Large
 Created:        August 25th 2019
 Last Modified:  February 13th 2022
+
+Version: 2.0.0
 
 Software:       python 3.7.x (compatible with python 2.x.x and 3.x.x)
 '''
@@ -15,7 +19,6 @@ from typing import Callable, Optional, Tuple
 import numpy as np
 import scipy.sparse
 import time
-# import forceFunctions as ff
 from FPE.base import BaseIntegrator
 
 
@@ -35,7 +38,6 @@ class FPE_Integrator_1D(BaseIntegrator):
             constDiff
         )
         self.dx = dx
-        # self.dt = dt
 
         self.N = len(xArray)
         self.prob = np.ones(self.N) / (self.N * self.dx)
@@ -58,7 +60,7 @@ class FPE_Integrator_1D(BaseIntegrator):
         self.fluxTracker = 0
 
     def initializeProbability(self, mean: float, var: float):
-        # ANCHOR port this to parent class
+        # ANCHOR port this to parent class?
         self.prob = np.exp(-(0.5 / var) * ((self.xArray - mean)**2))
         self.prob = self.prob / (sum(self.prob) * self.dx)
 
@@ -214,7 +216,7 @@ class FPE_Integrator_1D(BaseIntegrator):
 
         return fluxFw - fluxRev
 
-    def _calcBoundaryFlux_laxWendroff(
+    def _calcFlux_laxWendroff(
         self, forceParams: Tuple, forceFunction: Callable, deltaT: float
     ) -> Tuple[np.ndarray, np.ndarray]:
 
@@ -226,41 +228,57 @@ class FPE_Integrator_1D(BaseIntegrator):
 
             halfProb[i + 1] = (
                 0.5 * (self.prob[i + 1] + self.prob[i])
-                # BUG There was an inconsistency between the differet iBCs for
-                # this, HW had a factor of 1/2 in front of the flux difference,
-                # check this
-                # NOTE INcorporated prefactor into subroutine, but I still think there
-                # needs to be a factor of 1/2 out front because we are calculating
-                # a half-step probability update, so dt -> 0.5 dt
-                - 0.5 * self._getFluxDiff_LaxWendroff(forceFunction, forceParams, deltaT, i)
+                - self._getFluxDiff_LaxWendroff(forceFunction, forceParams, deltaT, i)
             )
-            # NOTE Also have factor of 1/2 here (see below)
             halfFlux[i + 1] = (
-                #0.5 * 
+                0.5 *
                 forceFunction(self.xArray[i] + 0.5 * self.dx, forceParams) * halfProb[i + 1]
             )
 
-        # For HW noting ele needs to be done
-        # For periodic need to specify boundaries (self.N-1 index)
+        # Boundary terms
         if self.BC == 'periodic':
             halfProb[0] = (
                 0.5 * (self.prob[0] + self.prob[-1])
-                # NOTE Added factor of 0.5 here
-                - 0.5 * self._getFluxDiff_LaxWendroff(
+                - self._getFluxDiff_LaxWendroff(
                     forceFunction, forceParams, deltaT, len(self.prob) - 1
                 )
             )
-            # NOTE Same factor of 1/2 here as well.
-            # Seems to make the calculations work...
+
+            halfProb[-1] = (
+                0.5 * (self.prob[-1] + self.prob[0])
+                - self._getFluxDiff_LaxWendroff(forceFunction, forceParams, deltaT, 0)
+            )
+ 
             halfFlux[0] = (
-                # 0.5 * 
+                0.5 *
                 forceFunction(self.xArray[0] - 0.5 * self.dx, forceParams) * halfProb[0]
             )
             halfFlux[-1] = halfFlux[0]
 
-        # NOTE For open BCs, there are currently no modifications to the
-        # specification of boundary terms. I think this is incorrect?
-        # elif self.BC == "open":
+        elif self.BC == "open":
+
+            fluxFw = (
+                (self.D * deltaT / (2 * self.dx))
+                * forceFunction(self.xArray[0], forceParams)
+                * self.prob[0]
+            )
+            fluxRev = (
+                (self.D * deltaT / (2 * self.dx))
+                * forceFunction(self.xArray[-1], forceParams)
+                * self.prob[-1]
+            )
+            halfProb[0] = 0.5 * self.prob[0] - fluxFw
+            halfProb[-1] = 0.5 * self.prob[-1] + fluxRev
+            halfFlux[0] = 0.5 * forceFunction(self.xArray[0] - 0.5 * self.dx, forceParams) * halfProb[0]
+            halfFlux[-1] = 0.5 * forceFunction(self.xArray[-1] + 0.5 * self.dx, forceParams) * halfProb[-1]
+
+        else:
+            # Hard wall boundaries
+            halfProb[0] = 0.5 * self.prob[0]
+            halfProb[-1] = 0.5 * self.prob[-1]
+            halfFlux[0] = 0.5 * forceFunction(self.xArray[0] - 0.5 * self.dx, forceParams) * halfProb[0]
+            halfFlux[-1] = 0.5 * forceFunction(self.xArray[0] - 0.5 * self.dx, forceParams) * halfProb[-1]
+
         return halfProb, halfFlux
 
     def laxWendroff(
@@ -268,7 +286,7 @@ class FPE_Integrator_1D(BaseIntegrator):
     ):
         newProb = np.zeros(len(self.prob))
 
-        halfProb, halfFlux = self._calcBoundaryFlux_laxWendroff(
+        _, halfFlux = self._calcFlux_laxWendroff(
             forceParams, forceFunction, deltaT
         )
 
@@ -303,7 +321,7 @@ class FPE_Integrator_1D(BaseIntegrator):
         )
 
         # NOTE Somewhat naively, I would assume that the hard-wall condition is
-        # that ewProb[0] is taken by replacing the self.prob[index-1]with 0 
+        # that newProb[0] is taken by replacing the self.prob[index-1]with 0
         # as there is no existing probability to the left (or right) os the
         # base grid. For periodic conditions, I would expect that we would
         # set the boundaries periodically, and for open
