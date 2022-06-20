@@ -60,11 +60,11 @@ def check_CFL_satisfied_for_valid_input_parameters():
 
 
 # TESTS -- Dynamics preserve normalization
-@pytest.mark.parameterize("boundary_cond", boundary_condition_list)
+@pytest.mark.parametrize("boundary_cond", boundary_condition_list)
 def test_dynamics_preserve_normalization(boundary_cond):
     # Arrange
     prec = 4
-    force_param = 0.5
+    force_param = [0.5]
     n_steps = 100
     init_var = 1 / 64
     fpe = FPE_Integrator_1D(D, dt, dx, x_array, boundaryCond=boundary_cond)
@@ -72,18 +72,18 @@ def test_dynamics_preserve_normalization(boundary_cond):
 
     # Act
     for _ in range(n_steps):
-        fpe.advectionUpdate(force_param, ff.constantForce)
+        fpe.advectionUpdate(force_param, ff.constantForce, dt)
 
-    assert np.round(np.sum(fpe.prob * fpe.dx), prec) == 0
+    assert np.round(np.sum(fpe.prob * fpe.dx), prec) == 1.0
 
 
 # TESTS -- constant force propagation speed
-@pytest.mark.parameterize("boundary_cond", boundary_condition_list)
+@pytest.mark.parametrize("boundary_cond", boundary_condition_list)
 def check_wave_speed_constant_force(boundary_cond):
     # Arrange
     prec = 4
     boundary_cond = "periodic"
-    force_param = 0.5
+    force_param = [0.5]
     n_steps = 10
     init_var = 1 / 64
     fpe = FPE_Integrator_1D(D, dt, dx, x_array, boundaryCond=boundary_cond)
