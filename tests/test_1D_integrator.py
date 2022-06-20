@@ -45,7 +45,7 @@ def test_diffusion_matrix_initialization():
     # Arrange
     dx = 0.25
     dt = 0.01
-    D = 1.0
+    D = 2.0
     xArray = np.arange(0, 1, dx)
 
     # Act``
