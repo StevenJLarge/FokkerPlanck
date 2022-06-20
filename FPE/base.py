@@ -34,7 +34,7 @@ class BaseIntegrator(ABC):
         self.diffScheme = diffScheme    # Integration scheme for diffusion term
         # self.adScheme = adScheme        # Integration scheme for advection term
         if adScheme != "lax-wendroff":
-            raise DeprecationWarning(
+            raise NotImplementedError(
                 "Alternate advection methods unavailable, defaulting"
                 + "to LW, in a future version this will raise an error "
             )

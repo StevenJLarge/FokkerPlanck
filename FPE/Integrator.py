@@ -191,10 +191,12 @@ class FPE_Integrator_1D(BaseIntegrator):
 
         self.CFL = maxForce * self.dt / self.dx
         if(self.CFL > 1):
-            print("\n\n\t\tStability warning, invalid CFL --> " + str(self.CFL) + "\n\n")
+            if self.output:
+                print("\t\tStability warning, invalid CFL --> " + str(self.CFL) + "\n\n")
             returnVal = False
         else:
-            print("\n\n\t\tCFL criterion satisfied, CFL --> " + str(self.CFL) + "\n\n")
+            if self.output:
+                print("\t\tCFL criterion satisfied, CFL --> " + str(self.CFL) + "\n\n")
             returnVal = True
 
         return returnVal
