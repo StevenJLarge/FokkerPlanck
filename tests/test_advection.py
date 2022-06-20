@@ -99,5 +99,3 @@ def check_wave_speed_constant_force(boundary_cond):
 
     # Assert
     assert np.round(speed - force_param, prec) == 0
-
-# TEST --- boundary conditions have expected behaviour?
