@@ -20,7 +20,7 @@ BMat_test = np.array([
 
 def test_default_instatiation():
     # Arrange
-    D = 1.0
+    D = 2.0
     dt = 0.001
     dx = 0.01
     xArray = np.arange(0, 1, dx)
