@@ -74,7 +74,7 @@ def test_dynamics_preserve_normalization(boundary_cond):
     for _ in range(n_steps):
         fpe.advectionUpdate(force_param, ff.constantForce, dt)
 
-    assert np.round(np.sum(fpe.prob * fpe.dx), prec) == 1.5
+    assert np.round(np.sum(fpe.prob * fpe.dx), prec) == 1.0
 
 
 # TESTS -- constant force propagation speed
