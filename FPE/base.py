@@ -48,7 +48,7 @@ class BaseIntegrator(ABC):
 
         # Default initial argument for sparse method utilization in matrix
         # operations
-        self.sparTest = False
+        self.sparseCalc = False
 
         # Physics trackers
         self.workAccumulator = 0
@@ -136,7 +136,7 @@ class BaseIntegrator(ABC):
             if(self.output is True):
                 print("\t\tSparse matrix methods preferred...")
 
-            self.sparTest = True
+            self.sparseCalc = True
             self.AMat = sAMat
             self.BMat = sBMat
             self.CMat = sCMat
@@ -144,7 +144,7 @@ class BaseIntegrator(ABC):
         else:
             if(self.output is True):
                 print("\t\tDense matrix methods preferred...")
-            self.sparTest = False
+            self.sparseCalc = False
 
     def _testSparse_gen(
         self, sAMat: scipy.sparse.csr.csr_matrix,
@@ -163,16 +163,16 @@ class BaseIntegrator(ABC):
         timeReg = endReg_full - startReg_full
 
         if(timeSparse < timeReg):
-            if(self.output is True):
+            if(self.output):
                 print("\t\tSparse matrix methods preferred...")
-            self.sparTest = True
+            self.sparseCalc = True
             self.BMat = sBMat
             self.AMat = sAMat
 
         else:
-            if(self.output is True):
+            if(self.output):
                 print("\t\tDense matrix methods preferred...")
-            self.sparTest = False
+            self.sparseCalc = False
 
     # ANCHOR Think of a better name for this...
     def integrateStepAdvection(
@@ -181,14 +181,14 @@ class BaseIntegrator(ABC):
         self.advectionUpdate(forceParams, forceFunction, self.dt)
 
     def diffusionUpdate(self):
-        if(self.sparTest is True):
-            if(self.constDiff is True):
+        if(self.sparseCalc):
+            if(self.constDiff):
                 self.prob = self.CMat.dot(self.prob)
             else:
                 bVec = self.BMat.dot(self.prob)
                 self.prob = scipy.sparse.linalg.spsolve(self.AMat, bVec)
         else:
-            if(self.constDiff is True):
+            if(self.constDiff):
                 self.prob = np.matmul(self.CMat, self.prob)
             else:
                 bVec = np.matmul(self.BMat, self.prob)
