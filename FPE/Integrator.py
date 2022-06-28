@@ -610,30 +610,11 @@ class FPE_integrator_2D:
     def testSparse(self):
         sBMat = scipy.sparse.csr_matrix(self.BMat)
         sAMat = scipy.sparse.csr_matrix(self.AMat)
-        sCMat = scipy.sparse.csr_matrix(self.CMat)
+        # sCMat = scipy.sparse.csr_matrix(self.CMat)
 
         if(self.constDiff is True):
-            startSparse_inv = time.time()
-            _ = sCMat.dot(self.prob)
-            endSparse_inv = time.time()
-            timeSparse = endSparse_inv - startSparse_inv
-
-            startReg_inv = time.time()
-            _ = np.linalg.solve(self.CMat, self.prob)
-            endReg_inv = time.time()
-            timeReg = endReg_inv - startReg_inv
-
-            if(timeSparse < timeReg):
-                if(self.output is True):
-                    print("\t\tSparse matrix methods preferred...")
-                self.sparTest = True
-                self.AMat = sAMat
-                self.BMat = sBMat
-                self.CMat = sCMat
-            else:
-                if(self.output is True):
-                    print("\t\tDense matrix methods preferred...")
-                self.sparTest = False
+            # NOTE after benchmarking, for constant diffusion coefficients
+            self.sparTest = False
 
         else:
             startSparse_full = time.time()
