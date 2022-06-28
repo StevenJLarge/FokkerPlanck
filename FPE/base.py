@@ -48,7 +48,7 @@ class BaseIntegrator(ABC):
 
         # Default initial argument for sparse method utilization in matrix
         # operations
-        self.sparTest = False
+        self.sparseCalc = False
 
         # Physics trackers
         self.workAccumulator = 0
@@ -84,40 +84,37 @@ class BaseIntegrator(ABC):
 
     def _setDiffusionScheme(self):
         if(self.diffScheme.lower() == "implicit"):
-            if(self.output is True):
+            if(self.output):
                 print("\t\tUsing fully implicit integration scheme...")
             self.expImp = 1.0
 
         elif(self.diffScheme.lower() == "explicit"):
-            if(self.output is True):
+            if(self.output):
                 print("\t\tUsing fully explicit integration scheme...")
             self.expImp = 0.0
 
         elif(self.diffScheme.lower() == "crank-nicolson"):
-            if(self.output is True):
+            if(self.output):
                 print("\t\tUsing Crank-Nicolson integration scheme...")
             self.expImp = 0.5
 
         else:
-            if(self.output is True):
+            if(self.output):
                 print("\t\tInt scheme unknown, using default setting (CN)...")
             self.expImp = 0.5
 
     def testSparse(self):
         # If constant diffusion matrix, then run reduced calculation (we dont
         # need to invert every step in this case)
-        if(self.constDiff is True):
-            # Initialize sparse-matrix representations of A, B, C
-            sBMat = scipy.sparse.csr_matrix(self.BMat)
-            sAMat = scipy.sparse.csr_matrix(self.AMat)
-            sCMat = scipy.sparse.csr_matrix(self.CMat)
-            self._testSparse_CD(sAMat, sBMat, sCMat)
+        if(self.constDiff):
+            self.spaseCalc = False
 
         else:
             sBMat = scipy.sparse.csr_matrix(self.BMat)
             sAMat = scipy.sparse.csr_matrix(self.AMat)
             self._testSparse_gen(sAMat, sBMat)
 
+    # NOTE this routine is now depriciated
     def _testSparse_CD(
         self, sAMat: scipy.sparse.csr.csr_matrix,
         sBMat: scipy.sparse.csr.csr_matrix, sCMat: scipy.sparse.csr.csr_matrix
@@ -133,18 +130,18 @@ class BaseIntegrator(ABC):
         timeReg = endReg_inv - startReg_inv
 
         if(timeSparse < timeReg):
-            if(self.output is True):
+            if(self.output):
                 print("\t\tSparse matrix methods preferred...")
 
-            self.sparTest = True
+            self.sparseCalc = True
             self.AMat = sAMat
             self.BMat = sBMat
             self.CMat = sCMat
 
         else:
-            if(self.output is True):
+            if(self.output):
                 print("\t\tDense matrix methods preferred...")
-            self.sparTest = False
+            self.sparseCalc = False
 
     def _testSparse_gen(
         self, sAMat: scipy.sparse.csr.csr_matrix,
@@ -163,16 +160,16 @@ class BaseIntegrator(ABC):
         timeReg = endReg_full - startReg_full
 
         if(timeSparse < timeReg):
-            if(self.output is True):
+            if(self.output):
                 print("\t\tSparse matrix methods preferred...")
-            self.sparTest = True
+            self.sparseCalc = True
             self.BMat = sBMat
             self.AMat = sAMat
 
         else:
-            if(self.output is True):
+            if(self.output):
                 print("\t\tDense matrix methods preferred...")
-            self.sparTest = False
+            self.sparseCalc = False
 
     # ANCHOR Think of a better name for this...
     def integrateStepAdvection(
@@ -181,14 +178,14 @@ class BaseIntegrator(ABC):
         self.advectionUpdate(forceParams, forceFunction, self.dt)
 
     def diffusionUpdate(self):
-        if(self.sparTest is True):
-            if(self.constDiff is True):
+        if(self.sparseCalc):
+            if(self.constDiff):
                 self.prob = self.CMat.dot(self.prob)
             else:
                 bVec = self.BMat.dot(self.prob)
                 self.prob = scipy.sparse.linalg.spsolve(self.AMat, bVec)
         else:
-            if(self.constDiff is True):
+            if(self.constDiff):
                 self.prob = np.matmul(self.CMat, self.prob)
             else:
                 bVec = np.matmul(self.BMat, self.prob)
@@ -198,7 +195,7 @@ class BaseIntegrator(ABC):
         self, forceParams: Tuple, forceFunction: Callable, deltaT: float
     ):
         # There is now only the one advection method that is stable, so this
-        # will be used 
+        # will be used
         self.laxWendroff(forceParams, forceFunction, deltaT)
 
     def integrate_step(self, forceParams: Tuple, forceFunction: Callable):
