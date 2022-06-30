@@ -1,5 +1,12 @@
 # Configuration file for FPE integrators
 
+DEFAULTS = {
+    "diffScheme": "crank-nicholson",
+    "adScheme": "lax-wendroff",
+    "boundaryConditions": "hard-wall",
+    "splittingMethod": "strang"
+}
+
 diffSchemes = [
     "explicit",
     "implicit",

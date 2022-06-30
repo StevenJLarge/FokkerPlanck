@@ -116,8 +116,8 @@ class BaseIntegrator(ABC):
 
     # NOTE this routine is now depriciated
     def _testSparse_CD(
-        self, sAMat: scipy.sparse.csr.csr_matrix,
-        sBMat: scipy.sparse.csr.csr_matrix, sCMat: scipy.sparse.csr.csr_matrix
+        self, sAMat: scipy.sparse.csr_matrix,
+        sBMat: scipy.sparse.csr_matrix, sCMat: scipy.sparse.csr_matrix
     ):
         startSparse_inv = time.time()
         _ = sCMat.dot(self.prob)
@@ -144,8 +144,8 @@ class BaseIntegrator(ABC):
             self.sparseCalc = False
 
     def _testSparse_gen(
-        self, sAMat: scipy.sparse.csr.csr_matrix,
-        sBMat: scipy.sparse.csr.csr_matrix
+        self, sAMat: scipy.sparse.csr_matrix,
+        sBMat: scipy.sparse.csr_matrix
     ):
         startSparse_full = time.time()
         sbVec = sBMat.dot(self.prob)
