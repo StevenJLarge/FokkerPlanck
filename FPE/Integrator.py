@@ -65,12 +65,12 @@ class FPE_Integrator_1D(BaseIntegrator):
         self.prob = self.prob / (sum(self.prob) * self.dx)
 
     def initDiffusionMatrix(self):
-        if(self.output is True):
+        if(self.output):
             print("\n\nInitializing diffusion term integration matrix...\n")
         # Set parameters for diffusion matrix iteration
         super()._setDiffusionScheme()
 
-        if(self.output is True):
+        if(self.output):
             print("\t\tInitializing integration matrices for diffusion\n")
         alpha = self.D * self.dt / (self.dx * self.dx)
         self.AMat = np.zeros((self.N, self.N))
