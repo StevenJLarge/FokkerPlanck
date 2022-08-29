@@ -158,7 +158,7 @@ def harmonicEnergy_2D(xVals, yVals, params):
 
 def harmonicForce_x(xVals, yVals, params_x):
     """
-    This returns the force in the x direction for the harmonicEnergy_2D
+    This returns the force in the x directiton for the harmonicEnergy_2D
     """
     return -params_x[0] * xVals
 
