@@ -211,19 +211,19 @@ class BaseIntegrator(ABC):
             # NOTE: Potentially change this to raise an error?
             self._integrateStepStrang(forceParams, forceFunction)
 
-    @classmethod
+    # @classmethod
     def _integrateStepLie(self, forceParams: Tuple, forceFunction: Callable):
         self.advectionUpdate(forceParams, forceFunction, self.dt)
         self.diffusionUpdate()
 
     # @classmethod
-    def _integrateStepStrang(self, forceParams, forceFunction):
+    def _integrateStepStrang(self, forceParams: Tuple, forceFunction: Callable):
         self.advectionUpdate(forceParams, forceFunction, 0.5 * self.dt)
         self.diffusionUpdate()
         self.advectionUpdate(forceParams, forceFunction, 0.5 * self.dt)
 
-    @classmethod
-    def _integrateStepSWSS(self, forceParams, forceFunction):
+    # @classmethod
+    def _integrateStepSWSS(self, forceParams: Tuple, forceFunction: Callable):
         initProb = self.prob
         self.advectionUpdate(forceParams, forceFunction, self.dt)
         self.diffusionUpdate()
