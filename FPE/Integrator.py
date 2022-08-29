@@ -8,11 +8,11 @@ diffusion matrix
 
 Author:         Steven Large
 Created:        August 25th 2019
-Last Modified:  February 13th 2022
+Last Modified:  June 28th 2022
 
 Version: 2.0.0
 
-Software:       python 3.7.x (compatible with python 2.x.x and 3.x.x)
+Software:       python 3
 '''
 
 from typing import Callable, Optional, Tuple
