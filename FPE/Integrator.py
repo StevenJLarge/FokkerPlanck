@@ -233,7 +233,6 @@ class FPE_Integrator_1D(BaseIntegrator):
                 - self._getFluxDiff_LaxWendroff(forceFunction, forceParams, deltaT, i)
             )
             halfFlux[i + 1] = (
-                0.5 *
                 forceFunction(self.xArray[i] + 0.5 * self.dx, forceParams) * halfProb[i + 1]
             )
 
@@ -252,7 +251,6 @@ class FPE_Integrator_1D(BaseIntegrator):
             )
  
             halfFlux[0] = (
-                0.5 *
                 forceFunction(self.xArray[0] - 0.5 * self.dx, forceParams) * halfProb[0]
             )
             halfFlux[-1] = halfFlux[0]
@@ -271,15 +269,16 @@ class FPE_Integrator_1D(BaseIntegrator):
             )
             halfProb[0] = 0.5 * self.prob[0] - fluxFw
             halfProb[-1] = 0.5 * self.prob[-1] + fluxRev
-            halfFlux[0] = 0.5 * forceFunction(self.xArray[0] - 0.5 * self.dx, forceParams) * halfProb[0]
-            halfFlux[-1] = 0.5 * forceFunction(self.xArray[-1] + 0.5 * self.dx, forceParams) * halfProb[-1]
+            halfFlux[0] = forceFunction(self.xArray[0] - 0.5 * self.dx, forceParams) * halfProb[0]
+            halfFlux[-1] = forceFunction(self.xArray[-1] + 0.5 * self.dx, forceParams) * halfProb[-1]
 
         else:
             # Hard wall boundaries
             halfProb[0] = 0.5 * self.prob[0]
             halfProb[-1] = 0.5 * self.prob[-1]
-            halfFlux[0] = 0.5 * forceFunction(self.xArray[0] - 0.5 * self.dx, forceParams) * halfProb[0]
-            halfFlux[-1] = 0.5 * forceFunction(self.xArray[0] - 0.5 * self.dx, forceParams) * halfProb[-1]
+            #NOTE took out 0.5 factor before forces here...
+            halfFlux[0] = forceFunction(self.xArray[0] - 0.5 * self.dx, forceParams) * halfProb[0]
+            halfFlux[-1] = forceFunction(self.xArray[0] - 0.5 * self.dx, forceParams) * halfProb[-1]
 
         return halfProb, halfFlux
 
