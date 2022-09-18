@@ -50,6 +50,7 @@ def harmonicEnergy(position, params, timeIndex=None):
 
 
 def harmonicForce_constVel(position, params):
+    # Params = [kval, cpVel, D, beta]
     return -params[0] * position - params[1] / (params[2] * params[3])
 
 
