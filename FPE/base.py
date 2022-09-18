@@ -194,11 +194,21 @@ class BaseIntegrator(ABC):
     def advectionUpdate(
         self, forceParams: Tuple, forceFunction: Callable, deltaT: float
     ):
-        # There is now only the one advection method that is stable, so this
-        # will be used
+        # Currently, this only direcs towards the LW routine, but supports
+        # the flexibility to add others in the future
         self.laxWendroff(forceParams, forceFunction, deltaT)
 
     def integrate_step(self, forceParams: Tuple, forceFunction: Callable):
+        """Integrates the equations by one time step. In this package, operator
+        splitting methods are used, and this interface routine directs the update
+        step towards the correct endpoint: Strang, Lie, ot SWSS
+
+        Args:
+            forceParams (Tuple): Tuple representing the current force parameters
+            forceFunction (Callable): The function taking arguments of the form
+                (x, *args) that gives the force on the system as function of
+                its position
+        """
         if(self.splitMethod == 'lie'):
             self._integrateStepLie(forceParams, forceFunction)
 
@@ -208,11 +218,16 @@ class BaseIntegrator(ABC):
         elif(self.splitMethod == 'swss'):
             self._integrateStepSWSS(forceParams, forceFunction)
         else:
-            # NOTE: Potentially change this to raise an error?
             self._integrateStepStrang(forceParams, forceFunction)
 
     # @classmethod
     def _integrateStepLie(self, forceParams: Tuple, forceFunction: Callable):
+        """Implementation of Lie splitting update of FPE
+
+        Args:
+            forceParams (Tuple): _description_
+            forceFunction (Callable): _description_
+        """
         self.advectionUpdate(forceParams, forceFunction, self.dt)
         self.diffusionUpdate()
 
@@ -235,7 +250,7 @@ class BaseIntegrator(ABC):
         self.prob = 0.5 * (prob_1 + prob_2)
 
     @property
-    def get_prob(self) -> np.ndarray:
+    def prob(self) -> np.ndarray:
         return self.prob
 
     @abstractclassmethod
