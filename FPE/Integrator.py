@@ -45,6 +45,18 @@ class FPE_Integrator_1D(BaseIntegrator):
 
         self.initDiffusionMatrix()
 
+    @property
+    def dimension(self):
+        return 1
+
+    @property
+    def mean(self):
+        return np.sum(self.prob * self.xArray * self.dx)
+
+    @property
+    def variance(self):
+        return np.sum(((self.xArray - self.mean) ** 2) * self.prob * self.dx)
+
     def reset(self):
         pass
 
