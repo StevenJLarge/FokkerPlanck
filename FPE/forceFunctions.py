@@ -59,6 +59,8 @@ def harmonicEnergy_constVel(position, params, trapCenter=0):
     # return 0.5 * params[0] * ((position - trapCenter)**2)
 
 
+# NOTE TODO Interpretation  of second param is incorrect, its actually 1 / nmin
+# so that should be changed...
 def periodicForce(position, params, timeIndex=None):
     '''
     Periodic force, force parameters: [amp,nMin,minPos]
