@@ -4,13 +4,6 @@ import numpy as np
 from FPE.Integrator import FPE_Integrator_1D
 import FPE.forceFunctions as ff
 
-
-# Tests - does it relax to correct equilibrium distribution?
-#       - Does it reach correct steady-state in constatnt velocity harmonic
-#       - Check relaxation of mean
-#       - Check relaxation of variance
-#       - Check excess power relation?
-
 # Testing suite: because the majority of the raw initialization and error
 # handling is handled in the diffusion and advection suites, respectively,
 # here we focus on physical correctness and source-of-truth calculation accuracy
