@@ -4,7 +4,6 @@
 # August 26th 2019
 
 # import os
-from ast import For
 import numpy as np
 import sys
 from typing import Tuple, Union, Iterable
