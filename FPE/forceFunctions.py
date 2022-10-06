@@ -6,47 +6,81 @@
 # import os
 import numpy as np
 import sys
+from typing import Tuple, Union, Iterable
+
+InputParameters = Union[Tuple, Iterable]
+PositionData = Union[float, np.ndarray]
+
+ForceData = Union[float, np.ndarray]
+EnergyData = Union[float, np.ndarray]
 
 
-def noForce(position, params):
+def noForce(
+    position: PositionData, params: InputParameters
+) -> ForceData:
+    """Null force function, returns zero always
+
+    Args:
+        position (float ot numpy array): System position
+        params (tuple): Parameters
+
+    Returns:
+        ForceData: zero force
+    """
     return 0
 
 
-def constantForce(position, params):
-    '''
-    Constant force, force parameters: [kVal]
-    potential energy: -kVal*position
-    '''
+def constantForce(
+    position: PositionData, params: InputParameters
+) -> ForceData:
+    """Constant force function, force parameters are of form [kValue]
+    where kValue is the force.
+
+    Potential energy is -kVal * position
+
+    Args:
+        position (PositionData): system position
+        params (ForceParameters): constant force value
+
+    Returns:
+        ForceData: force at each position point
+    """
     force = params[0]
     return force
 
 
-def constantEnergy(position, params):
-    energy = -params[0] * position
-    return energy
+def harmonicForce(
+    position: PositionData, params: InputParameters
+) -> ForceData:
+    """Harmonic potential force, with potential of the form
+
+    E(x) = k / 2 * (position - x_0)
+
+    The parameters are of the form [k, x_0]
+
+    Args:
+        position (PositionData): system position
+        params (ForceParameters): poatential parameters
+
+    Returns:
+        ForceData: forces
+    """
+    return -params[0] * (position - params[1])
 
 
-def harmonicForce(position, params, timeIndex=None):
-    '''
-    Harmonic force, force parameters: [kVal,center]
-    potential energy: 0.5*kVal*(position - center)**2
-    Effective force for constant velocity trap motion has parameters [kVal,CPVel,D,beta]
-    '''
-    if(timeIndex is None):
-        force = -params[0] * (position - params[1])
-    else:
-        force = -params[0] * (position - params[1][timeIndex])
+def harmonicEnergy(
+    position:PositionData, params:InputParameters
+) -> EnergyData:
+    """Harmonic energy function
 
-    return force
+    Args:
+        position (PositionData): _description_
+        params (InputParameters): _description_
 
-
-def harmonicEnergy(position, params, timeIndex=None):
-    if(timeIndex is None):
-        energy = 0.5*params[0]*((position - params[1])**2)
-    else:
-        energy = 0.5*params[0]*((position - params[1][timeIndex])**2)
-
-    return energy
+    Returns:
+        EnergyData: _description_
+    """
+    return 0.5*params[0]*((position - params[1])**2)
 
 
 def harmonicForce_constVel(position, params):
