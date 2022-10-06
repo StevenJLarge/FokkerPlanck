@@ -4,6 +4,7 @@
 # August 26th 2019
 
 # import os
+from ast import For
 import numpy as np
 import sys
 from typing import Tuple, Union, Iterable
@@ -83,49 +84,45 @@ def harmonicEnergy(
     return 0.5*params[0]*((position - params[1])**2)
 
 
-def harmonicForce_constVel(position, params):
+def harmonicForce_constVel(
+    position: PositionData, params: InputParameters
+) -> ForceData:
     # Params = [kval, cpVel, D, beta]
     return -params[0] * position - params[1] / (params[2] * params[3])
 
 
-def harmonicEnergy_constVel(position, params, trapCenter=0):
+def harmonicEnergy_constVel(
+    position: PositionData, params: InputParameters
+) -> EnergyData:
     return 0.5 * params[0] * ((position - params[4]) ** 2)
-    # return 0.5 * params[0] * ((position - trapCenter)**2)
-
+ 
 
 # NOTE TODO Interpretation  of second param is incorrect, its actually 1 / nmin
 # so that should be changed...
-def periodicForce(position, params, timeIndex=None):
+def periodicForce(
+    position: PositionData, params: InputParameters
+) -> ForceData:
     '''
     Periodic force, force parameters: [amp,nMin,minPos]
     potential energy: -0.5*amp*cos((2*np.pi/params[1])*(position - params[2]))
     '''
-    if(timeIndex is None):
-        force = (
-            -(np.pi * params[0] / float(params[1]))
-            * np.sin(
-                (2 * np.pi / float(params[1])) * (position - params[2])
-            )
-        )
-    else:
-        force = (
-            -(np.pi * params[0] / float(params[1]))
-            * np.sin(
-                (2 * np.pi / float(params[1])) * (position - params[2][timeIndex])
-            )
-        )
+    force = (
+        -(np.pi * params[0] / float(params[1]))
+        * np.sin((2 * np.pi / float(params[1])) * (position - params[2]))
+    )
     return force
 
 
-def periodicEnergy(position, params, timeIndex=None):
-    if(timeIndex is None):
-        energy = -0.5 * params[0] * np.cos((2 * np.pi/float(params[1])) * (position - params[2]))
-    else:
-        energy = -0.5 * params[0] * np.cos((2 * np.pi / float(params[1])) * (position - params[2][timeIndex]))
+def periodicEnergy(
+    position: PositionData, params: InputParameters
+) -> EnergyData:
+    energy = -0.5 * params[0] * np.cos((2 * np.pi/float(params[1])) * (position - params[2]))
     return energy
 
 
-def periodicForce_constVel(position, params):
+def periodicForce_constVel(
+    position: PositionData, params: InputParameters
+) -> ForceData:
     return -params[2] - np.pi * params[0] * np.sin(2 * np.pi * (position - params[1]))
 
 
