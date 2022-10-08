@@ -377,30 +377,57 @@ def harmonicEnergy_2D(
     return 0.5 * (params[0][0] * ((x - params[0][1]) ** 2) + params[1][0] * ((y - params[1][1]) ** 2))
 
 
-def harmonicForce_x(
-    x: PositionData, y: PositionData, params_x: InputParameters
+def harmonicForce_z(
+    z: PositionData, params: InputParameters
 ) -> ForceData:
-    """
-    This returns the force in the x directiton for the harmonicEnergy_2D
-    """
-    return -params_x[0] * (x - params_x[1])
+    """Force in the z-direction (where z is x or y) due to 2-D harmonic
+    potential energy function. For this function, we only need parameters from
+    the z-direction. The energy function is of
+    the form
 
+    E(x, y) = p_00/2 * (x - p_01)^2 + p_10/2 * (x - p_11)^2
 
-def harmonicForce_y(
-    x: PositionData, y: PositionData, params_y: InputParameters
-) -> ForceData:
+    So that (for z = x)
+
+    F_x(x, y) = -par_x E(x, y) = -p_00 * (x - p_01)
+
+    p_0: Spring constant in z-direction
+    p_1: Trap center in z-direction
+
+    Args:
+        z (PositionData): z-coordinate position
+        params (InputParameters): Parameters for z-direction dynamics
+
+    Returns:
+        ForceData: Force along the z-direction for input z data
     """
-    This returns the force in the y direction for the harmonicEnergy_2D
-    """
-    return -params_y[0] * (y - params_y[1])
+    return -params[0] * (z - params[1])
 
 
 # ANCHOR Periodic potential
-def periodicEnergy_2D(xVals, yVals, params):
+def periodicEnergy_2D(
+    x: PositionData, y: PositionData, params: InputParameters
+) -> EnergyData:
+    """2-D periodic energy function, given by the equation
+
+    E(x, y) = p_00 / 2 * cos(2 * pi * p_01 * x) + p_10 / 2 * cos(2 * pi * p_11 * y)
+
+    p_00: Energy barrier height along x-direction
+    p_01: Number of potential energy minima and maxima per rotation in x
+    p_10: Energy barrier height along the y-direfction
+    P_11: Number of potential energy minima and maxima per rotation in y
+
+    Args:
+        x (PositionData): x position coordimates
+        y (PositionData): y position coordinates
+        params (InputParameters): Parameters defining the X-Y potential energy function
+
+    Returns:
+        EnergyData: Potential energy as a function of the x,y coordaintes input
     """
-    Potential energy: 0.5*params[0]*cos(2*pi*x) + 0.5*params[1]*cos(2*pi*y)
-    """
-    return 0.5 * params[0] * np.cos(2 * np.pi * xVals) + 0.5 * params[1] * np.cos(2 * np.pi * yVals)
+    E_x = 0.5 * params[0][0] * np.cos(2 * np.pi * params[0][1] * x)
+    E_y = 0.5 * params[1][0] * np.cos(2 * np.pi * params[1][1] * y)
+    return E_x + E_y
 
 
 def genPeriodicLandscape_2D(xArray, yArray, params):
