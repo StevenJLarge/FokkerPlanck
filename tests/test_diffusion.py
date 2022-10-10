@@ -88,7 +88,7 @@ def test_diffusion_relation(D):
     for _ in range(n_steps):
         time += dt
         fpe.diffusionUpdate()
-        var_tracker.append(variance(fpe.get_prob, fpe.xArray))
+        var_tracker.append(variance(fpe.prob, fpe.xArray))
         time_tracker.append(time)
 
     Y = np.array(var_tracker) + init_var
