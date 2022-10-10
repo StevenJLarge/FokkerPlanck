@@ -347,7 +347,7 @@ class BaseIntegrator(metaclass=ABCMeta):
         return True
 
     @property
-    def prob(self) -> np.ndarray:
+    def get_prob(self) -> np.ndarray:
         return self.prob
 
     @abstractclassmethod

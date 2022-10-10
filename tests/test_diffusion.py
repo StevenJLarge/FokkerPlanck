@@ -80,7 +80,7 @@ def test_diffusion_relation(D):
     time = 0
     fpe = Integrator.FPE_Integrator_1D(D, dt, dx, x_array_large, boundaryCond="open")
     fpe.initializeProbability(0, init_var)
-    var_tracker = [variance(fpe.prob, fpe.xArray)]
+    var_tracker = [variance(fpe.get_prob, fpe.xArray)]
     time_tracker = [time]
     theory_slope = 2 * D
 
