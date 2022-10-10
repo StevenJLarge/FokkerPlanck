@@ -1,6 +1,6 @@
 # Base class for FPE integrator
 
-from abc import ABC, abstractclassmethod
+from abc import ABCMeta, abstractclassmethod
 from typing import Callable, Optional, Tuple, Union
 import numpy as np
 import time
@@ -9,19 +9,46 @@ import scipy.sparse
 from FPE import config
 
 
-class BaseIntegratorResult(ABC):
-    # Base class for integrator result containers
-    def __init__(self):
-        pass
+class BaseIntegrator(metaclass=ABCMeta):
+    """Base class for integrator objects (abstract), all instances of FPE
+    integrators must inherit from this base class. Universal functions are
+    defined and implemented here, while instance-specific methods are
+    relegated to the inherited classes
 
-
-class BaseIntegrator(ABC):
-    # Base class for integrator
+    Raises:
+        ValueError: _description_
+        NotImplementedError: _description_
+        ValueError: _description_
+        ValueError: _description_
+    """
     def __init__(
         self, D: float, dt: float, diffScheme: str, adScheme: str,
         boundaryCond: str, splitMethod: str, output: Optional[bool] = False,
         constDiff: Optional[bool] = True
     ):
+        """Constructor for base integrator class
+
+        Args:
+            D (float): diffusion coefficient for dynaimcs (assumed to be constant)
+            dt (float): Discrete ime step size
+            diffScheme (str): Integration scehem used for diffusion step: can
+                be one of `explicit`, `implicit` or `crank-nicolson`, default
+                is to use `crank-nicolson` 
+            adScheme (str): INtegration scheme used for advection step, for now
+                this is a passthrough method as only the 2-step lax-wendroff
+                method is implemented
+            boundaryCond (str): Boundary condition to use on the domain, can be
+                one of `hard-wall`, `periodic`, or 'open', default is to use
+                `hard-wall`
+            splitMethod (str): Operator splitting method used to segment the 
+                advection and diffusiojn integration steps. Default is symmetric
+                Strang splitting
+            output (Optional[bool], optional): Whether to show internal output
+                messages during execution. Defaults to False.
+            constDiff (Optional[bool], optional): Whether or not the diffusion
+                coefficient will be constant through the course of simulation.
+                Defaults to True.
+        """
         # Validate input parameters
         self._validateInput(diffScheme, adScheme, boundaryCond, splitMethod)
 
@@ -32,16 +59,10 @@ class BaseIntegrator(ABC):
 
         # Instantiate the instance directives
         self.diffScheme = diffScheme    # Integration scheme for diffusion term
-        # self.adScheme = adScheme        # Integration scheme for advection term
-        if adScheme != "lax-wendroff":
-            raise NotImplementedError(
-                "Alternate advection methods unavailable, defaulting"
-                + "to LW, in a future version this will raise an error "
-            )
-        self.adScheme = "lax-wendroff"
+        self.adScheme = adScheme        # Integration scheme for advection term
         self.BC = boundaryCond          # Boundary conditions
         self.splitMethod = splitMethod  # Integator splitting method
-        self.constDiff = constDiff      # Flag for if diffusion matrix is cost
+        self.constDiff = constDiff      # Flag for if diffusion matrix is const
 
         # Flag for whether or not output will be printed
         self.output = output
@@ -62,8 +83,11 @@ class BaseIntegrator(ABC):
         if diffScheme not in config.diffSchemes:
             raise ValueError("diffScheme not recognized, see config file")
 
-        # if adScheme not in config.adSchemes:
-        #     raise ValueError("adScheme not recognized, see config file")
+        if adScheme != "lax-wendroff":
+            raise NotImplementedError(
+                "Alternate advection methods currentyl unavailable, must use"
+                "`lax-wendroff`"
+            )
 
         if boundaryCond not in config.boundaryConditions:
             raise ValueError(
@@ -114,35 +138,6 @@ class BaseIntegrator(ABC):
             sAMat = scipy.sparse.csr_matrix(self.AMat)
             self._testSparse_gen(sAMat, sBMat)
 
-    # NOTE this routine is now depriciated
-    def _testSparse_CD(
-        self, sAMat: scipy.sparse.csr_matrix,
-        sBMat: scipy.sparse.csr_matrix, sCMat: scipy.sparse.csr_matrix
-    ):
-        startSparse_inv = time.time()
-        _ = sCMat.dot(self.prob)
-        endSparse_inv = time.time()
-        timeSparse = endSparse_inv - startSparse_inv
-
-        startReg_inv = time.time()
-        _ = np.linalg.solve(self.CMat, self.prob)
-        endReg_inv = time.time()
-        timeReg = endReg_inv - startReg_inv
-
-        if(timeSparse < timeReg):
-            if(self.output):
-                print("\t\tSparse matrix methods preferred...")
-
-            self.sparseCalc = True
-            self.AMat = sAMat
-            self.BMat = sBMat
-            self.CMat = sCMat
-
-        else:
-            if(self.output):
-                print("\t\tDense matrix methods preferred...")
-            self.sparseCalc = False
-
     def _testSparse_gen(
         self, sAMat: scipy.sparse.csr_matrix,
         sBMat: scipy.sparse.csr_matrix
@@ -171,7 +166,6 @@ class BaseIntegrator(ABC):
                 print("\t\tDense matrix methods preferred...")
             self.sparseCalc = False
 
-    # ANCHOR Think of a better name for this...
     def integrateStepAdvection(
         self, forceParams: Tuple, forceFunction: Callable
     ):
@@ -194,7 +188,7 @@ class BaseIntegrator(ABC):
     def advectionUpdate(
         self, forceParams: Tuple, forceFunction: Callable, deltaT: float
     ):
-        # Currently, this only direcs towards the LW routine, but supports
+        # Currently, this only directs towards the LW routine, but supports
         # the flexibility to add others in the future
         self.laxWendroff(forceParams, forceFunction, deltaT)
 
@@ -269,6 +263,3 @@ class BaseIntegrator(ABC):
     def laxWendroff(self, *args, **kwargs):
         pass
 
-    # @abstractclassmethod
-    # def lax(self, *args, **kwargs):
-    #     pass
