@@ -1,12 +1,12 @@
 # This is a class-based implementation of a simulator object that can
 # run simulations of particular FPE instances. Effectively this acts as
 # a convenience wrapper around the raw fpe integraator obects
-from abc import ABCMeta
-from typing import Union, Iterable, Optional, Dict
+from abc import ABCMeta, abstractmethod
+from typing import Union, Iterable, Optional, Dict, Callable
 import numpy as np
 import scipy.interpolate
-import copy
 from FPE.Integrator import FPE_Integrator_1D
+import FPE.forceFunctions as ff
 
 CPVector = Union[float, Iterable]
 
@@ -18,7 +18,7 @@ class SimulationResult:
 
 class BaseSimulator(metaclass=ABCMeta):
 
-    def __init__(self, lambda_init: CPVector, lambda_fin: CPVector):        
+    def __init__(self, lambda_init: CPVector, lambda_fin: CPVector):
         self.lambda_init = lambda_init
         self.lambda_fin = lambda_fin
 
@@ -27,11 +27,6 @@ class BaseSimulator(metaclass=ABCMeta):
 
 
 class Simulator1D(BaseSimulator):
-
-    self.lambda_init: CPVector
-    self.lambda_fin: CPVector
-    self.tau: float
-    self.time_array: Iterable
 
     def __init__(
         self, fpe_config: Dict, lambda_init: CPVector, lambda_fin: CPVector,
@@ -78,73 +73,135 @@ class Simulator1D(BaseSimulator):
         }
         return (D, dx, dt, x_array), additional_specs
 
-    def _get_raw_velocity(self, friction: float):
+    def _get_raw_velocity(self, friction: Union[float, Iterable]):
         return 1.0 / np.sqrt(friction)
 
-    def _get_raw_times(self) -> np.ndarray:
+    def _get_raw_times(self, raw_velocity: np.ndarray) -> np.ndarray:
         raw_times = np.zeros_like(self.lambda_array)
         for i in range(len(raw_times) - 1):
-            numerator = 2 * (self.k_array[i+1] - self.k_array[i])
-            denominator = (self.raw_velocities[i+1] + self.raw_velocities[i])
-            raw_times[i+1] =  (numerator / denominator) + raw_times[i]
+            numerator = 2 * (self.lambda_array[i+1] - self.lambda_array[i])
+            denominator = (raw_velocity[i+1] + raw_velocity[i])
+            raw_times[i+1] = (numerator / denominator) + raw_times[i]
 
         return raw_times
 
-    def _get_real_times(self, raw_times: np.ndarray) -> np.ndarray:
+    def _get_real_times(self, raw_times: np.ndarray, tau: float) -> np.ndarray:
         raw_tau = raw_times[-1]
-        self.real_times = (self.tau / raw_tau) * raw_times
+        self.real_times = (tau / raw_tau) * raw_times
 
-    def _get_real_velocities(self, raw_times: np.ndarray) -> np.ndarray:
+    def _get_real_velocities(
+        self, raw_times: np.ndarray, tau: float
+    ) -> np.ndarray:
         raw_tau = raw_times[-1]
         self.real_velocities = (raw_tau / tau) * self.raw_velocities
 
-    def build_optimal_protocol(self, tau: float) -> np.ndarray:
-        raw_times = self._get_raw_times()
-        self._get_real_times(raw_times)
-        self._get_real_velocities(raw_times)
+    def _build_optimal_protocol(self, tau: float) -> np.ndarray:
+        raw_velocity = self._get_raw_velocity(self.build_friction_array())
+        raw_times = self._get_raw_times(raw_velocity)
+        self.real_time = self._get_real_times(raw_times, tau)
+        self.real_velocity = self._get_real_velocities(raw_times, tau)
 
         # Now, we can generate the pairs of (time, k_value) from the pairs of real_times, k_array
         # But we want a uniform set of times at which we know the k values, so we cna interpolate
-        time_interp = scipy.interpolate.interp1d(self.real_times, self.k_array, fill_value="extrapolate")
-        self.optimal_protocol = time_interp(self.time_array)
-        return self.optimal_protocol
+        time_interp = scipy.interpolate.interp1d(self.real_time, self.lambda_array, fill_value="extrapolate")
+        optimal_protocol = time_interp(self.time_array)
+        return optimal_protocol
 
-    def build_naive_protocol(self, tau: float):
-        self.naive_protocol = np.linspace(self.k_i, self.k_f, len(self.time_array))
+    def _build_naive_protocol(self):
+        self.naive_protocol = np.linspace(self.lambda_init, self.lambda_fin, len(self.time_array))
 
-    def run_simulation(self, mode: Optional[str] = "naive"):
+    def build_protocol(self, tau: float, mode: Optional[str] = "naive"):
+        n_steps = int(tau / self.fpe.dt)
+        self.time_array = np.linspace(0, tau, n_steps)
+
         if mode == "naive":
-            self.build_naive_protocol()
+            self._build_naive_protocol()
             protocol = self.naive_protocol
         elif mode == "optimal":
-            self.build_optimal_protocol()
+            self._build_optimal_protocol()
             protocol = self.optimal_protocol
         else:
             raise ValueError("`mode` parameter must be `naive` or `optimal`")
+
+        return protocol, self.time_array
+
+    def run_simulation(self, tau: float, mode: Optional[str] = "naive"):
+
+        protocol, _ = self.build_protocol(tau, mode=mode)
 
         prob_tracker = []
         time_tracker = []
         cp_tracker = []
 
-        self.fpe.initializeProbability(0, 1 / self.k_i)
+        self.initialize_probability()
         self.fpe.initializePhysicalTrackers()
 
-        for i, k in enumerate(protocol[:-1]):
+        for i in enumerate(protocol[:-1]):
             if i % 10 == 0:
                 prob_tracker.append(self.fpe.prob)
                 time_tracker.append(self.time_array[i])
                 cp_tracker.append(protocol[i])
-            self.fpe.work_step(([protocol[i], 0]), ([protocol[i+1], 0]), ff.harmonicForce, ff.harmonicEnergy)
+
+            self.update(protocol[i], protocol[i+1])
 
         return SimulationResult(self, cp_tracker, prob_tracker, time_tracker)
 
+    @abstractmethod
+    def build_friction_array(self) -> np.ndarray:
+        ...
+
+    @abstractmethod
+    def initialize_probability(self):
+        ...
+
+    @abstractmethod
+    def update(self, protocol_bkw: CPVector, protocol_fwd: CPVector):
+        ...
+
 
 class BreathingSimulator(Simulator1D):
-    # instance specific logic: what needs to be provided FOR EACH unique system
-    # we are looking at?
-    pass
+    def __init__(
+        self, fpe_config: Dict, k_i: float, k_f: float,
+        forceFunction: Callable, energyFunction: Callable
+    ):
+        super().__init__(fpe_config, k_i, k_f)
+        self.forceFunc = forceFunction
+        self.energyFunc = energyFunction
+
+    def build_friction_array(self) -> np.ndarray:
+        return self.lambda_array ** (3/2)
+
+    def initialize_probability(self):
+        self.fpe.initializeProbability(0, 1 / self.lambda_init)
+
+    def update(self, protocol_bkw: CPVector, protocol_fwd: CPVector):
+        params_bkw = ([protocol_bkw, 0])
+        params_fwd = ([protocol_fwd, 0])
+
+        self.fpe.work_step(
+            params_bkw, params_fwd, self.forceFunc, self.energyFunc
+        )
 
 
+class HarmonicTranslationSimulator(Simulator1D):
+    def __init__(
+        self, fpe_config: Dict, trap_init: float, trap_fin: float,
+        forceFunction: Callable, energyFunction: Callable, trap_strength: float
+    ):
+        super().__init__(fpe_config, trap_init, trap_fin)
+        self.forceFunc = forceFunction
+        self.energyFunc = energyFunction
+        self.trap_strength = trap_strength
+
+    def build_friction_array(self) -> np.ndarray:
+        return np.ones_like(self.lambda_array)
+
+    def initialize_probability(self):
+        self.fpe.initializeProbability(self.lambda_init, 1 / self.trap_strength)
+
+    def update(self, protocol_bkw: CPVector, protocol_fwd: CPVector):
+        # TODO Start back up here
+        pass
 
 if __name__ == "__main__":
     # 2 equivalent sample input_config dictionaries
@@ -152,13 +209,22 @@ if __name__ == "__main__":
         "D": 1.0,
         "dx": 0.01,
         "dt": 0.001,
-        "x_min": -2,
-        "x_max": 2,
+        "x_min": -3,
+        "x_max": 3
     }
 
     config_2 = {
         "D": 1.0,
         "dx": 0.01,
         "dt": 0.001,
-        "x_array": np.arange(-2, 2, 0.001)
+        "x_array": np.arange(-3, 3, 0.001)
     }
+
+    breathing_1 = BreathingSimulator(config_1, 0.5, 4.0, ff.harmonicForce, ff.harmonicEnergy)
+    breathing_2 = BreathingSimulator(config_2, 0.5, 4.0, ff.harmonicForce, ff.harmonicEnergy)
+
+    proto_n_1 = breathing_1.build_protocol(1.5, mode="naive")
+    proto_n_2 = breathing_2.build_protocol(1.5, mode="naive")
+
+    proto_o_1 = breathing_1.build_protocol(1.5, mode="optimal")
+    proto_o_2 = breathing_2.build_protocol(1.5, mode="optimal")
