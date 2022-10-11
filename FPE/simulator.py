@@ -39,6 +39,9 @@ class Simulator1D(BaseSimulator):
 
         super().__init__(lambda_init, lambda_fin)
 
+    def reset(self):
+        self.fpe.reset()
+
     def _parseinputConfig(input_config: Dict):
         # Key elements
         key_elements = ["D", "dx", "dt", "x_array", "x_min" "x_max"]
@@ -185,8 +188,10 @@ class BreathingSimulator(Simulator1D):
 
 class HarmonicTranslationSimulator(Simulator1D):
     def __init__(
-        self, fpe_config: Dict, trap_init: float, trap_fin: float,
-        forceFunction: Callable, energyFunction: Callable, trap_strength: float
+        self, fpe_config: Dict, trap_init: float,
+        trap_fin: float, trap_strength: float,
+        forceFunction: Optional[Callable] = ff.harmonicForce_constVel,
+        energyFunction: Optional[Callable] = ff.harmonicEnergy_constVel,
     ):
         super().__init__(fpe_config, trap_init, trap_fin)
         self.forceFunc = forceFunction
@@ -200,8 +205,16 @@ class HarmonicTranslationSimulator(Simulator1D):
         self.fpe.initializeProbability(self.lambda_init, 1 / self.trap_strength)
 
     def update(self, protocol_bkw: CPVector, protocol_fwd: CPVector):
-        # TODO Start back up here
-        pass
+        dlambda = protocol_fwd - protocol_bkw
+        cp_vel = dlambda / self.fpe.dt
+        # Params: [k_trap, center, velocity, D]
+        params_bkw = ([self.trap_strength, 0, cp_vel, self.fpe.D])
+        params_fwd = ([self.trap_strength, dlambda, cp_vel, self.fpe.D])
+
+        self.fpe.work_step(
+            params_bkw, params_fwd, self.forceFunc, self.energyFunc
+        )
+
 
 if __name__ == "__main__":
     # 2 equivalent sample input_config dictionaries
