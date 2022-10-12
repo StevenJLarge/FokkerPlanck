@@ -12,8 +12,13 @@ CPVector = Union[float, Iterable]
 
 
 class SimulationResult:
-    def __init__(self):
-        pass
+    def __init__(
+        self, cp_tracker: Iterable, prob_tracker: Iterable,
+        time_tracker: Iterable
+    ):
+        self.CP = cp_tracker
+        self.prob_tracker = prob_tracker
+        self.time = time_tracker
 
 
 class BaseSimulator(metaclass=ABCMeta):
@@ -236,8 +241,16 @@ if __name__ == "__main__":
     breathing_1 = BreathingSimulator(config_1, 0.5, 4.0, ff.harmonicForce, ff.harmonicEnergy)
     breathing_2 = BreathingSimulator(config_2, 0.5, 4.0, ff.harmonicForce, ff.harmonicEnergy)
 
+    harmonic_trap = HarmonicTranslationSimulator(config_1, 0, 5, 8, ff.harmonicForce_constVel, ff.harmonicEnergy_constVel)
+
     proto_n_1 = breathing_1.build_protocol(1.5, mode="naive")
     proto_n_2 = breathing_2.build_protocol(1.5, mode="naive")
 
     proto_o_1 = breathing_1.build_protocol(1.5, mode="optimal")
     proto_o_2 = breathing_2.build_protocol(1.5, mode="optimal")
+
+    proto_n_3 = harmonic_trap.build_protocol(1.5, mode="naive")
+    proto_n_4 = harmonic_trap.build_protocol(3.0, mode="naive")
+
+    proto_o_3 = harmonic_trap.build_protocol(1.5, mode="optimal")
+    proto_o_4 = harmonic_trap.build_protocol(3.0, mode="optimal")
