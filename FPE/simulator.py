@@ -238,10 +238,17 @@ if __name__ == "__main__":
         "x_array": np.arange(-3, 3, 0.001)
     }
 
-    breathing_1 = BreathingSimulator(config_1, 0.5, 4.0, ff.harmonicForce, ff.harmonicEnergy)
-    breathing_2 = BreathingSimulator(config_2, 0.5, 4.0, ff.harmonicForce, ff.harmonicEnergy)
+    breathing_1 = BreathingSimulator(
+        config_1, 0.5, 4.0, ff.harmonicForce, ff.harmonicEnergy
+    )
+    breathing_2 = BreathingSimulator(
+        config_2, 0.5, 4.0, ff.harmonicForce, ff.harmonicEnergy
+    )
 
-    harmonic_trap = HarmonicTranslationSimulator(config_1, 0, 5, 8, ff.harmonicForce_constVel, ff.harmonicEnergy_constVel)
+    harmonic_trap = HarmonicTranslationSimulator(
+        config_1, 0, 5, 8, ff.harmonicForce_constVel,
+        ff.harmonicEnergy_constVel
+    )
 
     proto_n_1 = breathing_1.build_protocol(1.5, mode="naive")
     proto_n_2 = breathing_2.build_protocol(1.5, mode="naive")
