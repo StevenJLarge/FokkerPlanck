@@ -21,6 +21,20 @@ class SimulationResult:
         self.time = time_tracker
 
 
+class Protocol:
+    def __init__(self, control_parameter_vals: Iterable, time_vals: Iterable):
+        self._CP = control_parameter_vals
+        self._time = time_vals
+
+    @property
+    def CP(self):
+        return self._CP
+
+    @property
+    def time(self):
+        return self._time
+
+
 class BaseSimulator(metaclass=ABCMeta):
 
     def __init__(self, lambda_init: CPVector, lambda_fin: CPVector):
@@ -47,9 +61,9 @@ class Simulator1D(BaseSimulator):
     def reset(self):
         self.fpe.reset()
 
-    def _parseinputConfig(input_config: Dict):
+    def _parseInputConfig(self, input_config: Dict):
         # Key elements
-        key_elements = ["D", "dx", "dt", "x_array", "x_min" "x_max"]
+        key_elements = ["D", "dx", "dt", "x_array", "x_min", "x_max"]
 
         # Pull of key attributes
         D = input_config.get("D", None)
@@ -61,19 +75,19 @@ class Simulator1D(BaseSimulator):
         x_max = input_config.get('x_max', None)
         x_min = input_config.get("x_min", None)
 
-        if not x_array and not (x_min and x_max):
+        if (x_array is None) and np.array([x is None for x in [x_min, x_max]]).any():
             raise ValueError(
                 'Must provide either `x_array` or `x_min` AND `x_max` in'
                 'input_config dictionary'
             )
 
-        if np.array(entry is None for entry in [D, dx, dt]).any():
+        if np.array([entry is None for entry in [D, dx, dt]]).any():
             raise ValueError(
-                'Must provide keys of `D`, `dx`, and `dt` in input config'
+                'Must provide keys of `D`, `dx`, and `dt` in input config '
                 'dictionary.'
             )
 
-        if not x_array:
+        if x_array is None:
             x_array = np.arange(x_min, x_max, dx)
 
         additional_specs = {
@@ -95,25 +109,24 @@ class Simulator1D(BaseSimulator):
 
     def _get_real_times(self, raw_times: np.ndarray, tau: float) -> np.ndarray:
         raw_tau = raw_times[-1]
-        self.real_times = (tau / raw_tau) * raw_times
+        return (tau / raw_tau) * raw_times
 
     def _get_real_velocities(
-        self, raw_times: np.ndarray, tau: float
+        self, raw_times: np.ndarray, raw_velocities: np.ndarray, tau: float
     ) -> np.ndarray:
         raw_tau = raw_times[-1]
-        self.real_velocities = (raw_tau / tau) * self.raw_velocities
+        return (raw_tau / tau) * raw_velocities
 
     def _build_optimal_protocol(self, tau: float) -> np.ndarray:
         raw_velocity = self._get_raw_velocity(self.build_friction_array())
         raw_times = self._get_raw_times(raw_velocity)
         self.real_time = self._get_real_times(raw_times, tau)
-        self.real_velocity = self._get_real_velocities(raw_times, tau)
+        self.real_velocity = self._get_real_velocities(raw_times, raw_velocity, tau)
 
         # Now, we can generate the pairs of (time, k_value) from the pairs of real_times, k_array
         # But we want a uniform set of times at which we know the k values, so we cna interpolate
         time_interp = scipy.interpolate.interp1d(self.real_time, self.lambda_array, fill_value="extrapolate")
-        optimal_protocol = time_interp(self.time_array)
-        return optimal_protocol
+        self.optimal_protocol = time_interp(self.time_array)
 
     def _build_naive_protocol(self):
         self.naive_protocol = np.linspace(self.lambda_init, self.lambda_fin, len(self.time_array))
@@ -126,7 +139,7 @@ class Simulator1D(BaseSimulator):
             self._build_naive_protocol()
             protocol = self.naive_protocol
         elif mode == "optimal":
-            self._build_optimal_protocol()
+            self._build_optimal_protocol(tau)
             protocol = self.optimal_protocol
         else:
             raise ValueError("`mode` parameter must be `naive` or `optimal`")
@@ -235,7 +248,7 @@ if __name__ == "__main__":
         "D": 1.0,
         "dx": 0.01,
         "dt": 0.001,
-        "x_array": np.arange(-3, 3, 0.001)
+        "x_array": np.arange(-3, 3, 0.01)
     }
 
     breathing_1 = BreathingSimulator(
@@ -261,3 +274,5 @@ if __name__ == "__main__":
 
     proto_o_3 = harmonic_trap.build_protocol(1.5, mode="optimal")
     proto_o_4 = harmonic_trap.build_protocol(3.0, mode="optimal")
+
+    print("DONE!")
