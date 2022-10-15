@@ -103,8 +103,9 @@ def harmonicForce_constVel(
     F(x) = -p_0 * x - p_1 / p_2
 
     p_0 = Spring constant
-    p_1 = Trap velocity
-    p_2 = Diffusion coefficient
+    p_1 = Trap center (assumed to be zero for forces)
+    p_2 = Trap velocity
+    p_3 = Diffusion coefficient
 
     Args:
         position (PositionData): system posision 
@@ -113,11 +114,26 @@ def harmonicForce_constVel(
     Returns:
         ForceData: Force at each input position
     """
-    return -params[0] * position - params[1] / params[2]
+    return -params[0] * (position - params[1]) - params[2] / params[3]
 
 
-# NOTE TODO Interpretation  of second param is incorrect, its actually 1 / nmin
-# so that should be changed...
+def harmonicEnergy_constVel(
+    position: PositionData, params: InputParameters
+) -> EnergyData:
+    """Energy function corresponding to a centered harmonic potential, but with
+    a parameter signature that matches the harmonic force constant-velocity
+    force function
+
+    Args:
+        position (PositionData): system posision
+        params (InputParameters): force function parameters
+
+    Returns:
+        EnergyData: Energy at each input position
+    """
+    return -params[0] * (position - params[1]) ** 2
+
+
 def periodicForce(
     position: PositionData, params: InputParameters
 ) -> ForceData:
@@ -131,7 +147,7 @@ def periodicForce(
     p_2: Phase shift (in rotations)
 
     Args:
-        position (PositionData): System position (in rotations: 0 - 1 
+        position (PositionData): System position (in rotations: 0 - 1
             corresponds to a full rotation)
         params (InputParameters): Input force parameters
 
