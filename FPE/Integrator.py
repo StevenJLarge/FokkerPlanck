@@ -162,14 +162,11 @@ class FPE_Integrator_1D(BaseIntegrator):
             + np.diag((1 - self.expImp) * np.ones(self.N - 1), k=-1)
         )
 
-
-
         self.CMat = np.matmul(np.linalg.inv(self.AMat), self.BMat)
 
         # Test if sparse-matrix iteration steps are faster than normal matrix
         # multiplication
         self.testSparse()
-
 
     # NOTE Depricated
     def initDiffusionMatrix_legacy(self):
@@ -228,8 +225,35 @@ class FPE_Integrator_1D(BaseIntegrator):
         self._matrixBoundary_A(alpha, self.N - 1)
         self._matrixBoundary_B(alpha, self.N - 1)
 
-    # NOTE write vectorizzed version of the matrix boundary initialization
     def _matrixBoundary_A(self, alpha: float, idx: int):
+        """Routine to set boudary-related terms in the diffusion matrix
+
+        Args:
+            alpha (float): coefficient for diffusion matrix terms, see
+                documentation for definition
+            idx (int): x-array index where
+
+        Raises:
+            ValueError: raised when self.BC parameter is invalid / not supported
+        """
+        if self.BC == 'periodic':
+            self.AMat[idx, (idx + 1) % self.N] = -self.expImp * alpha
+            self.AMat[idx, (idx - 1) % self.N] = -self.expImp * alpha
+
+        # NOTE double check this boundary resolution..
+        elif self.BC == 'hard-wall':
+            self.AMat[idx, abs(idx - 1)] = -2*alpha
+
+        elif self.BC == "open":
+            pass
+
+        else:
+            raise ValueError(
+                f"Invalid boundary condition: {self.BC}, cannot resolve "
+                "diffusion matrix A"
+            )
+
+    def _matrixBoundary_A_legacy(self, alpha: float, idx: int):
         """Routine to set boudary-related terms in the diffusion matrix
 
         Args:
@@ -271,7 +295,35 @@ class FPE_Integrator_1D(BaseIntegrator):
                 "diffusion matrix A"
             )
 
-    def _matrixBoundary_B(self, alpha: float, idx: int):
+    def matrixBoundary_B(self, alpha: float, idx: int):
+        """Determines / sets the parameters of matrix B on the boundaries
+
+        Args:
+            alpha (float): coefficient for diffusion matrix terms, see
+                documentation for definition
+            idx (int): x-array index where
+
+        Raises:
+            ValueError: raised when self.BC parameter is invalid / not supported
+        """
+        if self.BC == 'periodic':
+            self.BMat[idx, (idx + 1) % self.N] = alpha * (1 - self.expImp)
+            self.BMat[idx, (idx - 1) % self.N] = alpha * (1 - self.expImp)
+
+        # NOTE double check this boundary resolution..
+        elif self.BC == 'hard-wall':
+            self.BMat[idx, idx] = 1
+
+        elif self.BC == "open":
+            pass
+
+        else:
+            raise ValueError(
+                f"Invalid boundary condition: {self.BC}, cannot resolve "
+                "diffusion matrix A"
+            )
+
+    def _matrixBoundary_B_legacy(self, alpha: float, idx: int):
         """Determines / sets the parameters of matrix B on the boundaries
 
         Args:
