@@ -149,6 +149,42 @@ class FPE_Integrator_1D(BaseIntegrator):
             print("\t\tInitializing integration matrices for diffusion\n")
 
         alpha = self.D * self.dt / (self.dx * self.dx)
+
+        self.AMat = (
+            np.diag(1 + 2 * alpha * self.expImp * np.ones(self.N))
+            - np.diag(alpha * self.expImp * np.ones(self.N - 1), k=1)
+            - np.diag(alpha * self.expimp * np.ones(self.N - 1), k=-1)
+        )
+
+        self.BMat = (
+            np.diag(1 - 2 * alpha * (1 - self.expImp) * np.ones(self.N))
+            + np.diag((1 - self.expImp) * np.ones(self.N - 1), k=1)
+            + np.diag((1 - self.expImp) * np.ones(self.N - 1), k=-1)
+        )
+
+
+
+        self.CMat = np.matmul(np.linalg.inv(self.AMat), self.BMat)
+
+        # Test if sparse-matrix iteration steps are faster than normal matrix
+        # multiplication
+        self.testSparse()
+
+
+    # NOTE Depricated
+    def initDiffusionMatrix_legacy(self):
+        """Routine to initialize the A and B diffusion matrices for diffusion
+        integration
+        """
+        if(self.output):
+            print("\n\nInitializing diffusion term integration matrix...\n")
+        # Set parameters for diffusion matrix iteration
+        super()._setDiffusionScheme()
+
+        if(self.output):
+            print("\t\tInitializing integration matrices for diffusion\n")
+
+        alpha = self.D * self.dt / (self.dx * self.dx)
         self.AMat = np.zeros((self.N, self.N))
         self.BMat = np.zeros((self.N, self.N))
 
@@ -192,6 +228,7 @@ class FPE_Integrator_1D(BaseIntegrator):
         self._matrixBoundary_A(alpha, self.N - 1)
         self._matrixBoundary_B(alpha, self.N - 1)
 
+    # NOTE write vectorizzed version of the matrix boundary initialization
     def _matrixBoundary_A(self, alpha: float, idx: int):
         """Routine to set boudary-related terms in the diffusion matrix
 
