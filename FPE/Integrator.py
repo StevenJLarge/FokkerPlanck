@@ -153,14 +153,17 @@ class FPE_Integrator_1D(BaseIntegrator):
         self.AMat = (
             np.diag(1 + 2 * alpha * self.expImp * np.ones(self.N))
             - np.diag(alpha * self.expImp * np.ones(self.N - 1), k=1)
-            - np.diag(alpha * self.expimp * np.ones(self.N - 1), k=-1)
+            - np.diag(alpha * self.expImp * np.ones(self.N - 1), k=-1)
         )
 
         self.BMat = (
             np.diag(1 - 2 * alpha * (1 - self.expImp) * np.ones(self.N))
-            + np.diag((1 - self.expImp) * np.ones(self.N - 1), k=1)
-            + np.diag((1 - self.expImp) * np.ones(self.N - 1), k=-1)
+            + alpha * np.diag((1 - self.expImp) * np.ones(self.N - 1), k=1)
+            + alpha * np.diag((1 - self.expImp) * np.ones(self.N - 1), k=-1)
         )
+
+        # Initialize boundary columns based on self.BC
+        self._initializeBoundaryTerms_legacy(alpha)
 
         self.CMat = np.matmul(np.linalg.inv(self.AMat), self.BMat)
 
@@ -186,7 +189,7 @@ class FPE_Integrator_1D(BaseIntegrator):
         self.BMat = np.zeros((self.N, self.N))
 
         # Initialize boundary columns based on self.BC
-        self._initializeBoundaryTerms(alpha)
+        self._initializeBoundaryTerms_legacy(alpha)
 
         # Initialize bulk matrix terms
         for rowIndex in range(1, self.N - 1):
@@ -224,6 +227,20 @@ class FPE_Integrator_1D(BaseIntegrator):
         # Right-side boundary
         self._matrixBoundary_A(alpha, self.N - 1)
         self._matrixBoundary_B(alpha, self.N - 1)
+
+    def _initializeBoundaryTerms_legacy(self, alpha: float):
+        """Initialize boundary terms for diffusion matrices
+
+        Args:
+            alpha (float): _description_
+        """
+        # Left-side boundary
+        self._matrixBoundary_A_legacy(alpha, 0)
+        self._matrixBoundary_B_legacy(alpha, 0)
+
+        # Right-side boundary
+        self._matrixBoundary_A_legacy(alpha, self.N - 1)
+        self._matrixBoundary_B_legacy(alpha, self.N - 1)
 
     def _matrixBoundary_A(self, alpha: float, idx: int):
         """Routine to set boudary-related terms in the diffusion matrix
