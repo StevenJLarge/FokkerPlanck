@@ -163,7 +163,7 @@ class FPE_Integrator_1D(BaseIntegrator):
         )
 
         # Initialize boundary columns based on self.BC
-        self._initializeBoundaryTerms_legacy(alpha)
+        self._initializeBoundaryTerms(alpha)
 
         self.CMat = np.matmul(np.linalg.inv(self.AMat), self.BMat)
 
