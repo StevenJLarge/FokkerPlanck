@@ -202,7 +202,8 @@ class FPE_Integrator_1D(BaseIntegrator):
 
         # NOTE double check this boundary resolution..
         elif self.BC == 'hard-wall':
-            self.AMat[idx, abs(idx - 1)] = -2*alpha
+            self.AMat[idx, idx] = 1 + 2 * alpha
+            self.AMat[idx, abs(idx - 1)] = -2 * alpha
 
         elif self.BC == "open":
             pass
@@ -213,7 +214,7 @@ class FPE_Integrator_1D(BaseIntegrator):
                 "diffusion matrix A"
             )
 
-    def matrixBoundary_B(self, alpha: float, idx: int):
+    def _matrixBoundary_B(self, alpha: float, idx: int):
         """Determines / sets the parameters of matrix B on the boundaries
 
         Args:
@@ -231,6 +232,7 @@ class FPE_Integrator_1D(BaseIntegrator):
         # NOTE double check this boundary resolution..
         elif self.BC == 'hard-wall':
             self.BMat[idx, idx] = 1
+            self.BMat[idx, abs(idx - 1)] = 0
 
         elif self.BC == "open":
             pass
