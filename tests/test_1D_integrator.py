@@ -3,6 +3,9 @@ import numpy as np
 
 from FPE.Integrator import FPE_Integrator_1D
 
+# Source of truth matrices for each boundary condition
+
+# Hard-wall (default)
 AMat_test = np.array([
     [1.32, -0.32, 0.0, 0.0],
     [-0.08, 1.16, -0.08, 0.0],
@@ -16,6 +19,42 @@ BMat_test = np.array([
     [0.0, 0.08, 0.84, 0.08],
     [0.0, 0.0, 0.0, 1.0]
 ])
+
+# Periodic
+AMat_test_periodic = np.array([
+    [1.16, -0.08, 0.0, -0.08],
+    [-0.08, 1.16, -0.08, 0.0],
+    [0.0, -0.08, 1.16, -0.08],
+    [-0.08, 0.0, -0.08, 1.16]
+])
+
+BMat_test_periodic = np.array([
+    [0.84, 0.08, 0.0, 0.08],
+    [0.08, 0.84, 0.08, 0.0],
+    [0.0, 0.08, 0.84, 0.08],
+    [0.08, 0.0, 0.08, 0.84]
+])
+
+# Open
+AMat_test_open = np.array([
+    [1.16, -0.08, 0.0, 0.0],
+    [-0.08, 1.16, -0.08, 0.0],
+    [0.0, -0.08, 1.16, -0.08],
+    [0.0, 0.0, -0.08, 1.16]
+])
+
+BMat_test_open = np.array([
+    [0.84, 0.08, 0.0, 0.0],
+    [0.08, 0.84, 0.08, 0.0],
+    [0.0, 0.08, 0.84, 0.08],
+    [0.0, 0.0, 0.08, 0.84]
+])
+
+testing_matrices = [
+    {'BC': 'hard-wall', 'AMat': AMat_test, 'BMat': BMat_test},
+    {'BC': 'periodic', 'AMat': AMat_test_periodic, 'BMat': BMat_test_periodic},
+    {'BC': 'open', 'AMat': AMat_test_open, 'BMat': BMat_test_open}
+]
 
 
 def test_default_instatiation():
@@ -41,18 +80,22 @@ def test_input_error_handling():
         _ = FPE_Integrator_1D(D, dt, dx, xArray, diffScheme=error_config)
 
 
-def test_diffusion_matrix_initialization():
+@pytest.mark.parametrize("init_config", testing_matrices)
+def test_diffusion_matrix_initialization(init_config):
     # Arrange
     dx = 0.25
     dt = 0.01
     D = 1.0
     xArray = np.arange(0, 1, dx)
+    boundaryCond = init_config["BC"]
+    AMat_test_local = init_config["AMat"]
+    BMat_test_local = init_config["BMat"]
 
-    # Act``
-    integrator = FPE_Integrator_1D(D, dt, dx, xArray)
+    # Act
+    integrator = FPE_Integrator_1D(D, dt, dx, xArray, boundaryCond=boundaryCond)
 
-    error_A = np.round(AMat_test - integrator.AMat, 5)
-    error_B = np.round(BMat_test - integrator.BMat, 5)
+    error_A = np.round(AMat_test_local - integrator.AMat, 5)
+    error_B = np.round(BMat_test_local - integrator.BMat, 5)
 
     # Assert
     assert np.sum(error_A) == 0
