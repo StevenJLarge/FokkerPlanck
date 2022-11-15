@@ -3,7 +3,7 @@ import numpy as np
 import scipy.interpolate
 from typing import Dict, Optional, Union, Iterable
 
-from FPE.types import CPVector
+from FPE.types.basetypes import CPVector
 from FPE.Integrator import FPE_Integrator_1D
 
 
@@ -160,3 +160,18 @@ class Simulator1D(BaseSimulator):
     @abstractmethod
     def update(self, protocol_bkw: CPVector, protocol_fwd: CPVector):
         ...
+
+
+# Empty class implementation for testing base functionality
+class VoidSimulator(Simulator1D):
+    def __init__(self, fpe_config: Dict):
+        super().__init__(fpe_config, 0, 1)
+
+    def build_friction_array(self):
+        pass
+
+    def initialize_probability(self):
+        pass
+
+    def update(self):
+        pass
