@@ -143,7 +143,7 @@ class FPE_Integrator_1D(BaseIntegrator):
         if(self.output):
             print("\n\nInitializing diffusion term integration matrix...\n")
         # Set parameters for diffusion matrix iteration
-        super()._setDiffusionScheme()
+        self._setDiffusionScheme()
 
         if(self.output):
             print("\t\tInitializing integration matrices for diffusion\n")
