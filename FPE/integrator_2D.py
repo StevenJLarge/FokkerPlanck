@@ -57,8 +57,15 @@ class FPE_integrator_2D(BaseIntegrator):
     def covariance(self) -> np.ndarray:
         pass
 
-    def reset(self):
-        pass
+    def reset(
+        self, covariance: Optional[np.ndarray] = None,
+        mean: Optional[np.ndarray] = None
+    ):
+        if covariance is not None and mean is not None:
+            self.initializeProbability(mean, covariance)
+        else:
+            self.prob = np.ones((self.Nx, self.Ny)) / (self.Nx * self.Ny * self.dx * self.dy)
+        self.initializePhysicalTrackers()
 
     def initializePhysicalTrackers(self):
         self.workAccumulator = 0
@@ -362,7 +369,11 @@ class FPE_integrator_2D(BaseIntegrator):
         print("\n\nBMat :\n" + str(self.BMat))
 
     def _initializeBoundaryTerms(self, alpha: float):
-        pass
+        self._matrixBoundary_A(alpha, 0)
+        self._matrixBoundary_B(alpha, 0)
+
+        self._matrixBoundary_A(alpha, self.N - 1)
+        self._matrixBoundary_B(alpha, self.N - 1)
 
     def _matrixBoundary_A(self, alpha: float, idx: int):
         pass

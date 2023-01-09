@@ -95,7 +95,7 @@ class FPE_Integrator_1D(BaseIntegrator):
         if variance is not None and mean is not None:
             self.initializeProbability(mean, variance)
         else:
-            self.prob = np.ones(self.N) / (self.N * dx)
+            self.prob = np.ones(self.N) / (self.N * self.dx)
         self.initializePhysicalTrackers()
 
     def initializePhysicalTrackers(self):
