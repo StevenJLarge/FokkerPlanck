@@ -85,7 +85,7 @@ class FPE_Integrator_1D(BaseIntegrator):
         physical trackers, if BOTH variance and mean are provided, then the
         probability will be reinitialized to a Gaussian distribution with the
         input variance ane mean
-        
+
         Args:
             variance (Optional[float], optional): Input varaince for Gaussian
                 distribution. Defaults to None.
@@ -95,7 +95,7 @@ class FPE_Integrator_1D(BaseIntegrator):
         if variance is not None and mean is not None:
             self.initializeProbability(mean, variance)
         else:
-            self.prob = np.ones(self.N) / (self.N * dx)
+            self.prob = np.ones(self.N) / (self.N * self.dx)
         self.initializePhysicalTrackers()
 
     def initializePhysicalTrackers(self):
@@ -143,7 +143,7 @@ class FPE_Integrator_1D(BaseIntegrator):
         if(self.output):
             print("\n\nInitializing diffusion term integration matrix...\n")
         # Set parameters for diffusion matrix iteration
-        super()._setDiffusionScheme()
+        self._setDiffusionScheme()
 
         if(self.output):
             print("\t\tInitializing integration matrices for diffusion\n")

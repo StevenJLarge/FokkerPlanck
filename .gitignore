@@ -91,3 +91,4 @@ target/
 # Extras
 fokkerPlanck_archive/
 docs/originalProject/
+figures/*

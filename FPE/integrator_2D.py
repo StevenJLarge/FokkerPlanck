@@ -13,22 +13,20 @@ class FPE_integrator_2D(BaseIntegrator):
         adScheme: Optional[str] = 'lax-wendroff',
         boundaryCond: Optional[str] = 'hard-wall',
         splitMethod: Optional[str] = 'strang',
-        output: Optional[bool] = True, constDiff: Optional[bool] = True
+        output: Optional[bool] = False,
+        constDiff: Optional[bool] = True
     ):
-        self.D = D
+
+        super().__init__(
+            D, dt, diffScheme, adScheme, boundaryCond, splitMethod, output,
+            constDiff
+        )
         self.dx = dx
         self.dy = dy
-        self.dt = dt
-
-        self.diffScheme = diffScheme.lower()
-        self.adScheme = adScheme.lower()
-        self.BC = boundaryCond.lower()
-        self.splitMethod = splitMethod.lower()
-
-        self.output = output
+ 
         self.Nx = len(xArray)
         self.Ny = len(yArray)
-        self.N = self.Nx*self.Ny
+        self.N = self.Nx * self.Ny
 
         # self.prob = np.ones((self.N,self.N))/(sum(self.Nx*self.dx)*sum(self.Ny*self.dy))
         self.prob = np.ones(self.Nx * self.Ny) / (self.Nx * self.Ny * self.dx * self.dy)
@@ -37,18 +35,6 @@ class FPE_integrator_2D(BaseIntegrator):
 
         self.constDiff = constDiff
         self.sparTest = False
-
-        # ANCHOR new additions: work and power tracking arrays (as well as time)
-        self.workAccumulator = 0
-        self.workTracker = []
-        self.powerTracker = []
-        self.timeTracker = []
-
-        # ANCHOR new additions of total (integrated) flux tracker
-        self.xFlux = np.zeros(len(xArray))
-        self.yFlux = np.zeros(len(yArray))
-        self.xFluxTracker = 0
-        self.yFluxTracker = 0
 
         self.initDiffusionMatrix()
 
@@ -71,11 +57,26 @@ class FPE_integrator_2D(BaseIntegrator):
     def covariance(self) -> np.ndarray:
         pass
 
-    def reset(self):
-        pass
+    def reset(
+        self, covariance: Optional[np.ndarray] = None,
+        mean: Optional[np.ndarray] = None
+    ):
+        if covariance is not None and mean is not None:
+            self.initializeProbability(mean, covariance)
+        else:
+            self.prob = np.ones((self.Nx, self.Ny)) / (self.Nx * self.Ny * self.dx * self.dy)
+        self.initializePhysicalTrackers()
 
     def initializePhysicalTrackers(self):
-        pass
+        self.workAccumulator = 0
+        self.workTracker = []
+        self.powerTracker = []
+        self.timeTracker = []
+
+        self.xFlux = np.zeros(self.Nx)
+        self.yFlux = np.zeros(self.Ny)
+        self.xFluxTracker = 0
+        self.yFluxTracker = 0
 
     def initializeProbability(self, mean: np.ndarray, covariance: np.ndarray):
         pass
@@ -89,19 +90,45 @@ class FPE_integrator_2D(BaseIntegrator):
         if(self.output is True):
             print("\n\nInitializing diffusion term integration matrix...\n")
 
-        if(self.diffScheme.lower() == "crank-nicolson"):
-            if(self.output is True):
-                print("\t\tUsing Crank-Nicolson integration scheme...")
-            self.expImp = 0.5
-        else:
-            if(self.output is True):
-                print("\t\tIntegration scheme not recognized, using default setting (Crank-Nicolson)...")
-            self.expImp = 0.5
+        self._setDiffusionScheme()
 
         if(self.output is True):
             print("\t\tInitializing integration matrices for diffusion\n")
 
         alpha = self.D * self.dt / (self.dx * self.dx)
+
+        self.AMat = np.zeros((self.N, self.N))
+        self.BMat = np.zeros((self.N, self.N))
+
+        # Bulk term initializations
+        self.AMat = (
+            np.diag(1 + 4 * alpha * self.expImp * np.ones(self.N))
+            - np.diag(self.expImp * alpha * np.ones(self.N - 1), k=1)
+            - np.diag(self.expImp * alpha * np.ones(self.N - 1), k=-1)
+            # far off-diagonal terms representing y-transitions
+            - np.diag(self.expImp * alpha * np.ones(self.N - self.Nx), k=self.Nx)
+            - np.diag(self.expImp * alpha * np.ones(self.N - self.Nx), k=-self.Nx)
+        )
+
+        self.BMat = (
+            np.diag(1 - 4 * alpha * (1 - self.expImp) * np.ones(self.N))
+            + np.diag(alpha * (1 - self.expImp) * np.ones(self.N - 1), k=1)
+            + np.diag(alpha * (1 - self.expImp) * np.ones(self.N - 1), k=-1)
+            + np.diag(alpha * (1 - self.expImp) * np.ones(self.N - self.Nx), k=self.Nx)
+            + np.diag(alpha * (1 - self.expImp) * np.ones(self.N - self.Nx), k=-self.Nx)
+        )
+
+        self._initializeBoundaryTerms(alpha)
+
+        self.CMat = np.matmul(np.linalg.inv(self.AMat), self.BMat)
+        self.testSparse()
+
+    def initDiffusionMatrix_legacy(self):
+
+        self._setDiffusionScheme()
+
+        alpha = self.D * self.dt / (self.dx * self.dx)
+
         self.AMat = np.zeros((self.N, self.N))
         self.BMat = np.zeros((self.N, self.N))
 
@@ -341,9 +368,27 @@ class FPE_integrator_2D(BaseIntegrator):
         print("AMat :\n" + str(self.AMat))
         print("\n\nBMat :\n" + str(self.BMat))
 
-        self.CMat = np.matmul(np.linalg.inv(self.AMat), self.BMat)
-        self.testSparse()
+    def _initializeBoundaryTerms(self, alpha: float):
+        self._matrixBoundary_A(alpha, 0)
+        self._matrixBoundary_B(alpha, 0)
 
+        self._matrixBoundary_A(alpha, self.N - 1)
+        self._matrixBoundary_B(alpha, self.N - 1)
+
+    def _matrixBoundary_A(self, alpha: float, idx: int):
+        pass
+
+    def _matrixBoundary_B(self, alpha: float, idx: int):
+        pass
+
+    # ANCHOR need to update function signature
+    def work_step(self):
+        pass
+
+    def flux_step(self):
+        pass
+
+    # TODO Migrate this to the base class
     def integrate_step(
         self, forceParams: Tuple, forceFunction_x: Callable,
         forceFunction_y: Callable
@@ -388,6 +433,7 @@ class FPE_integrator_2D(BaseIntegrator):
                 forceParams, forceFunction_x, forceFunction_y, 0.5 * self.dt
             )
 
+    # TODO Keep this in the base class
     def diffusionUpdate(self):
         if(self.sparTest is True):
             if(self.constDiff is True):
@@ -402,6 +448,7 @@ class FPE_integrator_2D(BaseIntegrator):
                 bVec = np.matmul(self.BMat, self.prob)
                 self.prob = np.linalg.solve(self.AMat, bVec)
 
+    # TODO Also put this in the base class
     def advectionUpdate(
         self, forceParams: Tuple, forceFunc_x: Callable, forceFunc_y: Callable,
         deltaT: float
@@ -415,9 +462,10 @@ class FPE_integrator_2D(BaseIntegrator):
         # else:
         #   self.laxWendroff(forceParams,forceFunction,deltaT)
         #   self.lax_dimSplit(forceParams,forceFunction,deltaT)
-        self.laxWendroff_lieSplit(forceFunc_x, forceFunc_y, forceParams, deltaT)
+        self.laxWendroff_lieSplit_leg(forceFunc_x, forceFunc_y, forceParams, deltaT)
 
-    def lax(self, forceParams: Tuple, forceFunction: Callable, deltaT: float):
+    # Probably just stick with LW for this? Just need to get it working...
+    def lax_leg(self, forceParams: Tuple, forceFunction: Callable, deltaT: float):
         # TODO TEST LAX METHOD
         """
         This function updates the 2D probability density function using the 2-D lax-step method
@@ -510,7 +558,7 @@ class FPE_integrator_2D(BaseIntegrator):
         # Flatten matrix probability and reform it into a single vector
         self.prob = np.reshape(newProb, (self.Nx * self.Ny))
 
-    def lax_lieSplit(
+    def lax_lieSplit_leg(
         self, forceFunc_x: Callable, forceFunc_y: Callable, forceParams: Tuple,
         deltaT: float
     ):
@@ -603,7 +651,7 @@ class FPE_integrator_2D(BaseIntegrator):
         # tempdt = self.dt
         self.dt = deltaT
 
-    def laxWendroff_lieSplit(
+    def laxWendroff_lieSplit_leg(
         self, forceFunc_x: Callable, forceFunc_y: Callable, forceParams: Tuple,
         deltaT: float
     ):
@@ -713,3 +761,13 @@ class FPE_integrator_2D(BaseIntegrator):
         self.dt = tempdt
         # Update self.prob vector with result
         self.prob = np.reshape(prob_mat, self.Nx * self.Ny)
+
+    # TODO write out hese routines
+    def laxWendroff(self):
+        pass
+
+    def _calcFlux_laxWendroff(self):
+        pass
+
+    def _getFluxDiff_laxWendroff(self):
+        pass
