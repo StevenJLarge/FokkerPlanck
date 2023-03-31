@@ -108,7 +108,7 @@ def harmonicForce_constVel(
     p_3 = Diffusion coefficient
 
     Args:
-        position (PositionData): system posision 
+        position (PositionData): system posision
         params (InputParameters): force function parameters
 
     Returns:
@@ -131,7 +131,7 @@ def harmonicEnergy_constVel(
     Returns:
         EnergyData: Energy at each input position
     """
-    return -params[0] * (position - params[1]) ** 2
+    return 0.5 * params[0] * (position - params[1]) ** 2
 
 
 def periodicForce(
@@ -277,9 +277,11 @@ def ABELForce(position: PositionData, params: InputParameters) -> ForceData:
         ForceData: Force as a function of the input positions
 
     """
-    if len(params > 3):
+    if len(params) > 3:
         A = params[3]
-    return 4 * params[0] * (position ** 3 - params[1] * position - A * params[2])
+    else:
+        A = 0.5
+    return -4 * params[0] * (position ** 3 - params[1] * position - A * params[2])
 
 
 def ABELEnergy(position: PositionData, params: InputParameters) -> EnergyData:

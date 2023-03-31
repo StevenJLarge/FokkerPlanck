@@ -85,7 +85,7 @@ class FPE_Integrator_1D(BaseIntegrator):
         physical trackers, if BOTH variance and mean are provided, then the
         probability will be reinitialized to a Gaussian distribution with the
         input variance ane mean
-        
+
         Args:
             variance (Optional[float], optional): Input varaince for Gaussian
                 distribution. Defaults to None.
