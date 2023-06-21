@@ -118,7 +118,7 @@ class FPE_integrator_2D(BaseIntegrator):
             + np.diag(alpha * (1 - self.expImp) * np.ones(self.N - self.Nx), k=-self.Nx)
         )
 
-        self._initializeBoundaryTerms(alpha)
+        # self._initializeBoundaryTerms(alpha)
 
         self.CMat = np.matmul(np.linalg.inv(self.AMat), self.BMat)
         self.testSparse()
@@ -771,3 +771,18 @@ class FPE_integrator_2D(BaseIntegrator):
 
     def _getFluxDiff_laxWendroff(self):
         pass
+
+
+if __name__ == "__main__":
+    D = 1.0
+    dt = 0.01
+    dx = 0.1
+    dy = 0.1
+    xArray = np.arange(-1, 1, dx)
+    yArray = np.arange(-1, 1, dy)
+
+    fpe = FPE_integrator_2D(D, dt, dx, dy, xArray, yArray)
+
+
+    fpe = FPE_integrator_2D(1.0, dt, dx, dy, xArray, yArray)
+
