@@ -99,42 +99,7 @@ class FPE_integrator_2D(BaseIntegrator):
 
         alpha = self.D * self.dt / (self.dx * self.dx)
 
-        self.AMat = np.zeros((self.N, self.N))
-        self.BMat = np.zeros((self.N, self.N))
-
-        # Bulk term initializations
-        self.AMat = (
-            np.diag(1 + 4 * alpha * self.expImp * np.ones(self.N))
-            - np.diag(self.expImp * alpha * np.ones(self.N - 1), k=1)
-            - np.diag(self.expImp * alpha * np.ones(self.N - 1), k=-1)
-            # far off-diagonal terms representing y-transitions
-            - np.diag(self.expImp * alpha * np.ones(self.N - self.Nx), k=self.Nx)
-            - np.diag(self.expImp * alpha * np.ones(self.N - self.Nx), k=-self.Nx)
-        )
-
-        self.BMat = (
-            np.diag(1 - 4 * alpha * (1 - self.expImp) * np.ones(self.N))
-            + np.diag(alpha * (1 - self.expImp) * np.ones(self.N - 1), k=1)
-            + np.diag(alpha * (1 - self.expImp) * np.ones(self.N - 1), k=-1)
-            + np.diag(alpha * (1 - self.expImp) * np.ones(self.N - self.Nx), k=self.Nx)
-            + np.diag(alpha * (1 - self.expImp) * np.ones(self.N - self.Nx), k=-self.Nx)
-        )
-
-        # self._initializeBoundaryTerms(alpha)
-
-        self.CMat = np.matmul(np.linalg.inv(self.AMat), self.BMat)
-        self.testSparse()
-
-    def initDiffusionMatrixSparse(self):
-        if(self.output is True):
-            print("\n\nInitializing diffusion term integration matrix...\n")
-
-        self._setDiffusionScheme()
-
-        if(self.output is True):
-            print("\t\tInitializing integration matrices for diffusion\n")
-
-        alpha = self.D * self.dt / (self.dx * self.dx)
+        print(self.BC)
 
         self.AMat = sp.lil_matrix((self.N, self.N))
         self.BMat = sp.lil_matrix((self.N, self.N))
@@ -152,13 +117,96 @@ class FPE_integrator_2D(BaseIntegrator):
         self.BMat.setdiag(alpha * (1 - self.expImp), k=self.Nx)
         self.BMat.setdiag(alpha * (1 - self.expImp), k=-self.Nx)
 
-        # self._initializeBoundaryTerms(alpha)
+        self._initializeBoundaryTerms(alpha)
 
-        # convert to csr format
-        self.AMat = self.AMat.tocsr()
-        self.BMat = self.AMat.tocsr()
+        # convert to csc format
+        self.AMat = self.AMat.tocsc()
+        self.BMat = self.BMat.tocsc()
 
         self.CMat = inv(self.AMat).dot(self.BMat)
+
+    def _initializeBoundaryTerms(self, alpha: float):
+        self._matrixBoundary_A(alpha, 0)
+        self._matrixBoundary_B(alpha, 0)
+
+        self._matrixBoundary_A(alpha, self.Nx - 1)
+        self._matrixBoundary_B(alpha, self.Nx - 1)
+
+    def _matrixBoundary_A(self, alpha: float, idx: int):
+        if self.BC == 'periodic':
+            # x-dimension BCs
+
+            # Need to place top rigth and bottom left elements in each block
+            # matrix for X and Y directions
+            for image in range(0, self.Ny):
+                x_idx = idx + self.Nx * image
+                y_idx_fw = (idx + 1) % self.Nx + self.Nx * image
+                y_idx_rv = (idx - 1) % self.Nx + self.Nx * image
+
+                self.AMat[x_idx, y_idx_fw] = -self.expImp * alpha
+                self.AMat[x_idx, y_idx_rv] = -self.expImp * alpha
+
+            # y-dimension BCs
+            self.AMat.setdiag(-self.expImp * alpha, k=self.N - self.Nx)
+            self.AMat.setdiag(-self.expImp * alpha, k=-(self.N - self.Nx))
+
+        elif self.BC == "hard-wall":
+            # This resolves the HW conditions in the X-dimension, still need
+            # to resolve in y
+            for image in range(0, self.Ny):
+                _idx = idx + self.Nx * image
+                self.AMat[_idx, _idx] = 1 + 2 * alpha
+                self.AMat[_idx, abs(idx - 1) + self.Nx * image] = -2 * alpha
+
+            # Need to test this / verify that this is the correct way of doing this...
+            for diag_idx in range(self.Nx):
+                self.AMat[diag_idx, self.Nx + diag_idx] = -2 * alpha
+                self.AMat[self.N - 1 - diag_idx, self.N - self.Nx - 1 - diag_idx] = -2 * alpha
+
+        elif self.BC == "open":
+            pass
+
+        else:
+            raise ValueError(
+                f"Invalid boundary condition `{self.BC}`, cannot resolve "
+                "diffusion matrix A"
+            )
+
+    def _matrixBoundary_B(self, alpha: float, idx: int):
+
+        if self.BC == "periodic":
+            # x-dimension BCs
+            for image in range(0, self.Ny):
+                x_idx = idx + self.Nx * image
+                y_idx_fw = (idx + 1) % self.Nx + self.Nx * image
+                y_idx_rv = (idx - 1) % self.Nx + self.Nx * image
+
+                self.BMat[x_idx, y_idx_fw] = alpha * (1 - self.expImp)
+                self.BMat[x_idx, y_idx_rv] = alpha * (1 - self.expImp)
+
+            # y-dimension BCs
+            self.BMat.setdiag(alpha * (1 - self.expImp), k=self.N - self.Nx)
+            self.BMat.setdiag(alpha * (1 - self.expImp), k=-(self.N - self.Nx))
+
+        elif self.BC == "hard-wall":
+            for image in range(0, self.Ny - 1):
+                _idx = idx + self.Nx * image
+                self.BMat[_idx, _idx] = 1
+                self.BMat[_idx, abs(idx - 1) + self.Nx * image] = 0
+
+            for diag_idx in range(self.Nx):
+                self.BMat[diag_idx, self.Nx + diag_idx] = 0
+                self.BMat[self.N - 1 - diag_idx, self.N - self.Nx - 1 - diag_idx] = 0
+
+
+        elif self.BC == "open":
+            pass
+
+        else:
+            raise ValueError(
+                f"Invalid boundary condition {self.BC}, cannot resolve "
+                "diffusion matrix B"
+            )
 
     def initDiffusionMatrix_legacy(self):
 
@@ -404,19 +452,6 @@ class FPE_integrator_2D(BaseIntegrator):
 
         print("AMat :\n" + str(self.AMat))
         print("\n\nBMat :\n" + str(self.BMat))
-
-    def _initializeBoundaryTerms(self, alpha: float):
-        self._matrixBoundary_A(alpha, 0)
-        self._matrixBoundary_B(alpha, 0)
-
-        self._matrixBoundary_A(alpha, self.N - 1)
-        self._matrixBoundary_B(alpha, self.N - 1)
-
-    def _matrixBoundary_A(self, alpha: float, idx: int):
-        pass
-
-    def _matrixBoundary_B(self, alpha: float, idx: int):
-        pass
 
     # ANCHOR need to update function signature
     def work_step(self):
