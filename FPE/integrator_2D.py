@@ -1,6 +1,8 @@
 from typing import Callable, Optional, Tuple, Dict
 import numpy as np
 import scipy
+import scipy.sparse as sp
+from scipy.sparse.linalg import inv
 from FPE.base import BaseIntegrator
 
 
@@ -122,6 +124,41 @@ class FPE_integrator_2D(BaseIntegrator):
 
         self.CMat = np.matmul(np.linalg.inv(self.AMat), self.BMat)
         self.testSparse()
+
+    def initDiffusionMatrixSparse(self):
+        if(self.output is True):
+            print("\n\nInitializing diffusion term integration matrix...\n")
+
+        self._setDiffusionScheme()
+
+        if(self.output is True):
+            print("\t\tInitializing integration matrices for diffusion\n")
+
+        alpha = self.D * self.dt / (self.dx * self.dx)
+
+        self.AMat = sp.lil_matrix((self.N, self.N))
+        self.BMat = sp.lil_matrix((self.N, self.N))
+
+        # Bulk term initializations
+        self.AMat.setdiag(1 + 4 * alpha * self.expImp)
+        self.AMat.setdiag(-1 * self.expImp * alpha, k=1)
+        self.AMat.setdiag(-1 * self.expImp * alpha, k=-1)
+        self.AMat.setdiag(-1 * self.expImp * alpha, k=self.Nx)
+        self.AMat.setdiag(-1 * self.expImp * alpha, k=-self.Nx)
+
+        self.BMat.setdiag(1 - 4 * alpha * (1 - self.expImp))
+        self.BMat.setdiag(alpha * (1 - self.expImp), k=1)
+        self.BMat.setdiag(alpha * (1 - self.expImp), k=-1)
+        self.BMat.setdiag(alpha * (1 - self.expImp), k=self.Nx)
+        self.BMat.setdiag(alpha * (1 - self.expImp), k=-self.Nx)
+
+        # self._initializeBoundaryTerms(alpha)
+
+        # convert to csr format
+        self.AMat = self.AMat.tocsr()
+        self.BMat = self.AMat.tocsr()
+
+        self.CMat = inv(self.AMat).dot(self.BMat)
 
     def initDiffusionMatrix_legacy(self):
 
