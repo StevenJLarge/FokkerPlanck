@@ -59,6 +59,9 @@ class FPE_integrator_2D(BaseIntegrator):
     def covariance(self) -> np.ndarray:
         pass
 
+    def _flatten_probability(self, prob: np.ndarray):
+        pass
+
     def reset(
         self, covariance: Optional[np.ndarray] = None,
         mean: Optional[np.ndarray] = None
@@ -98,8 +101,6 @@ class FPE_integrator_2D(BaseIntegrator):
             print("\t\tInitializing integration matrices for diffusion\n")
 
         alpha = self.D * self.dt / (self.dx * self.dx)
-
-        print(self.BC)
 
         self.AMat = sp.lil_matrix((self.N, self.N))
         self.BMat = sp.lil_matrix((self.N, self.N))
@@ -198,7 +199,6 @@ class FPE_integrator_2D(BaseIntegrator):
                 self.BMat[diag_idx, self.Nx + diag_idx] = 0
                 self.BMat[self.N - 1 - diag_idx, self.N - self.Nx - 1 - diag_idx] = 0
 
-
         elif self.BC == "open":
             pass
 
@@ -207,251 +207,6 @@ class FPE_integrator_2D(BaseIntegrator):
                 f"Invalid boundary condition {self.BC}, cannot resolve "
                 "diffusion matrix B"
             )
-
-    def initDiffusionMatrix_legacy(self):
-
-        self._setDiffusionScheme()
-
-        alpha = self.D * self.dt / (self.dx * self.dx)
-
-        self.AMat = np.zeros((self.N, self.N))
-        self.BMat = np.zeros((self.N, self.N))
-
-        for rowIndex in range(self.N):
-
-            if rowIndex == 0:
-                if(self.BC == 'hard-wall' or self.BC == 'hw'):
-                    # TODO Implement hard-wall boundary conditions
-                    pass
-                # print("\t\tUsing hard-wall boundary conditions...")
-                # self.AMat[rowIndex,:] = [1+2*alpha if col==0 else -2*alpha if col==1 else 0 for col in range(self.N)]
-                # self.BMat[rowIndex,:] = [1 if col==0 else 0 for col in range(self.N)]
-                elif(self.BC == 'periodic' or self.BC == 'p'):
-                    print("\t\tusing periodic boundary conditions...")
-                # self.AMat[rowIndex,:] = [1+2*alpha*self.expImp if col==0 else -self.expImp*alpha
-                # if col==1 else -self.expImp*alpha if col==(self.N-1) else 0 for col in range(self.N)]
-                    self.AMat[rowIndex, :] = [
-                        1 + 4 * alpha * self.expImp if col == 0
-                        else -self.expImp * alpha if (
-                            col == 1
-                            or col == (self.N - 1)
-                            or col == self.Nx
-                            or col == (self.N - self.Nx)
-                        )
-                        else 0 for col in range(self.N)
-                    ]
-                # self.BMat[rowIndex,:] = [1-2*alpha*(1-self.expImp) if col==0 else alpha*(1-self.expImp)
-                # if col==1 else alpha*(1-self.expImp) if col==(self.N-1) else 0 for col in range(self.N)]
-                    self.BMat[rowIndex, :] = [
-                        1 - 4 * alpha * (1 - self.expImp) if col == 0
-                        else alpha * (1 - self.expImp) if (
-                            col == 1
-                            or col == (self.N - 1)
-                            or col == self.Nx
-                            or col == (self.N - self.Nx)
-                        )
-                        else 0 for col in range(self.N)
-                    ]
-
-                elif(self.BC == 'open' or self.BC == 'o'):
-                    print("\t\tusing open domain boundary conditions...")
-                    # self.AMat[rowIndex,:] = [1+2*alpha*self.expImp if col==0 else -self.expImp*alpha if col==1
-                    # else 0 for col in range(self.N)]
-                    self.AMat[rowIndex, :] = [
-                        1 + 4 * alpha * self.expImp if col == 0
-                        else -self.expImp * alpha if (
-                            col == 1
-                            or col == self.Nx
-                        )
-                        else 0 for col in range(self.N)
-                    ]
-                    # self.BMat[rowIndex,:] = [1-2*alpha*(1-self.expImp) if col==0 else alpha*(1-self.expImp)
-                    # if col==1 else 0 for col in range(self.N)]
-                    self.BMat[rowIndex, :] = [
-                        1 - 4 * alpha * (1 - self.expImp) if col == 0
-                        else alpha * (1 - self.expImp) if (
-                            col == 1
-                            or col == self.Nx
-                        )
-                        else 0 for col in range(self.N)
-                    ]
-                else:
-                    # print("\t\tboundary condition not recognized, using default (hard-wall)...")
-                    print("\t\tboundary condition not recognized, using default (open)...")
-                    # self.AMat[rowIndex,:] = [1+2*alpha if col==0 else -2*alpha if col==1
-                    # else 0 for col in range(self.N)]
-                    # self.BMat[rowIndex,:] = [1 if col==0 else 0 for col in range(self.N)]
-                    self.AMat[rowIndex, :] = [
-                        1 + 4 * alpha * self.expImp if col == 0
-                        else -self.expImp * alpha if (
-                            col == 1
-                            or col == self.Nx
-                        )
-                        else 0 for col in range(self.N)
-                    ]
-
-                    self.BMat[rowIndex, :] = [
-                        1 - 4 * alpha * (1 - self.expImp) if col == 0
-                        else alpha * (1 - self.expImp) if (
-                            col == 1
-                            or col == self.Nx
-                        )
-                        else 0 for col in range(self.N)
-                    ]
-
-            elif rowIndex == (self.N - 1):
-                if(self.BC == 'hard-wall' or self.BC == 'hw'):
-                    # TODO Implement ard-wall BCs here as well
-                    pass
-                # self.AMat[rowIndex,:] = [1+2*alpha if col==(self.N-1) else -2*alpha if col==(self.N-2) else 0
-                # for col in range(self.N)]
-                # self.BMat[rowIndex,:] = [1 if col==(self.N-1) else 0 for col in range(self.N)]
-                elif(self.BC == 'periodic' or self.BC == 'p'):
-                    # self.AMat[rowIndex,:] = [1+2*alpha*self.expImp if col==(self.N-1) else -self.expImp*alpha if
-                    # col==(self.N-2) else -self.expImp*alpha if col==0  else 0 for col in range(self.N)]
-                    self.AMat[rowIndex, :] = [
-                        1 + 4 * alpha * self.expImp if col == (self.N - 1)
-                        else -self.expImp * alpha if (
-                            col == (self.N - 2)
-                            or col == 0
-                            or col == (self.N - (self.Nx + 1))
-                            or col == (self.Nx - 1)
-                        )
-                        else 0 for col in range(self.N)
-                    ]
-                # self.BMat[rowIndex,:] = [1-2*alpha*(1-self.expImp) if col==(self.N-1) else alpha*(1-self.expImp)
-                # if col==(self.N-2) else alpha*(1-self.expImp) if col==0 else 0 for col in range(self.N)]
-
-                    self.BMat[rowIndex, :] = [
-                        1 - 4 * alpha * (1 - self.expImp) if col == (self.N - 1)
-                        else alpha * (1 - self.expImp) if (
-                            col == (self.N - 2)
-                            or col == 0
-                            or col == (self.N - (self.Nx + 1))
-                            or col == (self.Nx - 1)
-                        )
-                        else 0 for col in range(self.N)
-                    ]
-
-                elif(self.BC == 'open' or self.BC == 'o'):
-                    # self.AMat[rowIndex,:] = [1+2*alpha*self.expImp if col==(self.N-1) else -self.expImp*alpha
-                    # if col==(self.N-2) else 0 for col in range(self.N)]
-                    self.AMat[rowIndex, :] = [
-                        1 + 4 * alpha * self.expImp if col == (self.N - 1)
-                        else -self.expImp * alpha if (
-                            col == (self.N - 2)
-                            or col == (self.N - (self.Nx + 1))
-                        )
-                        else 0 for col in range(self.N)
-                    ]
-                    # self.BMat[rowIndex,:] = [1-2*alpha*(1-self.expImp) if col==(self.N-1)
-                    # else alpha*(1-self.expImp) if col==(self.N-2) else 0 for col in range(self.N)]
-                    self.BMat[rowIndex, :] = [
-                        1 - 4 * alpha * (1 - self.expImp) if col == (self.N - 1)
-                        else alpha * (1 - self.expImp) if (
-                            col == (self.N - 2)
-                            or col == (self.N - (self.Nx + 1))
-                        )
-                        else 0 for col in range(self.N)
-                    ]
-
-                else:
-                    # self.AMat[rowIndex,:] = [1+2*alpha if col==(self.N-1) else -2*alpha if col==(self.N-1)
-                    # else 0 for col in range(self.N)]
-                    # self.BMat[rowIndex,:] = [1 if col==(self.N-1) else 0 for col in range(self.N)]
-                    self.AMat[rowIndex, :] = [
-                        1 + 4 * alpha * self.expImp if col == (self.N - 1)
-                        else -self.expImp * alpha if (
-                            col == (self.N - 2)
-                            or col == (self.N - (self.Nx + 1))
-                        )
-                        else 0 for col in range(self.N)
-                    ]
-
-                    self.BMat[rowIndex, :] = [
-                        1 - 4 * alpha * (1 - self.expImp) if col == (self.N - 1)
-                        else alpha * (1 - self.expImp) if (
-                            col == (self.N - 2)
-                            or col == (self.N - (self.Nx + 1))
-                        )
-                        else 0 for col in range(self.N)
-                    ]
-
-            else:
-                # Here we need additional cases, depending on the rowIndex relative to the size of the second dimension
-                # Current code is for open BCs with caveat for periodic BCs
-                if(rowIndex < self.Nx):
-                    self.AMat[rowIndex, :] = [
-                        1 + 4 * alpha * self.expImp if col == rowIndex
-                        else -self.expImp * alpha if col == (rowIndex - 1)
-                        else -self.expImp * alpha if col == (rowIndex + 1)
-                        else -self.expImp * alpha if col == (rowIndex + self.Nx)
-                        else 0 for col in range(self.N)
-                    ]
-
-                    self.BMat[rowIndex, :] = [
-                        1 - 4 * alpha * (1 - self.expImp) if col == rowIndex
-                        else self.expImp * alpha if col == (rowIndex - 1)
-                        else self.expImp * alpha if col == (rowIndex + 1)
-                        else self.expImp * alpha if col == (rowIndex + self.Nx)
-                        else 0 for col in range(self.N)
-                    ]
-
-                    if(self.BC == 'periodic' or self.BC == 'p'):
-                        self.AMat[rowIndex, rowIndex - self.Nx] = -self.expImp * alpha
-                        self.BMat[rowIndex, rowIndex - self.Nx] = self.expImp * alpha
-
-                elif(rowIndex < (self.N - self.Nx)):
-                    self.AMat[rowIndex, :] = [
-                        1 + 4 * alpha * self.expImp if col == rowIndex
-                        else -self.expImp * alpha if col == (rowIndex - 1)
-                        else -self.expImp * alpha if col == (rowIndex + 1)
-                        else -self.expImp * alpha if col == (rowIndex - self.Nx)
-                        else -self.expImp * alpha if col == (rowIndex + self.Nx)
-                        else 0 for col in range(self.N)
-                    ]
-
-                    self.BMat[rowIndex, :] = [
-                        1 - 4 * alpha * (1 - self.expImp) if col == rowIndex
-                        else self.expImp * alpha if col == (rowIndex - 1)
-                        else self.expImp * alpha if col == (rowIndex + 1)
-                        else self.expImp * alpha if col == (rowIndex - self.Nx)
-                        else self.expImp * alpha if col == (rowIndex + self.Nx)
-                        else 0 for col in range(self.N)
-                    ]
-                    # if(self.BC=='periodic' or self.BC=='p'):
-                    #    self.AMat[rowIndex,(rowIndex-self.Nx)] = -self.expImp*alpha
-                    #    self.BMat[rowIndex,(rowIndex-self.Nx)] = self.expImp*alpha
-                else:
-                    self.AMat[rowIndex, :] = [
-                        1 + 4 * alpha * self.expImp if col == rowIndex
-                        else -self.expImp * alpha if col == (rowIndex - 1)
-                        else -self.expImp * alpha if col == (rowIndex + 1)
-                        else -self.expImp * alpha if col == (rowIndex - self.Nx)
-                        else 0 for col in range(self.N)
-                    ]
-
-                    self.BMat[rowIndex, :] = [
-                        1 - 4 * alpha * (1 - self.expImp) if col == rowIndex
-                        else self.expImp * alpha if col == (rowIndex - 1)
-                        else self.expImp * alpha if col == (rowIndex + 1)
-                        else self.expImp * alpha if col == (rowIndex - self.Nx)
-                        else 0 for col in range(self.N)
-                    ]
-
-                    if(self.BC == 'periodic' or self.BC == 'p'):
-                        self.AMat[rowIndex, rowIndex - (self.N - self.Nx)] = -self.expImp * alpha
-                        self.BMat[rowIndex, rowIndex - (self.N - self.Nx)] = self.expImp * alpha
-
-                # self.AMat[rowIndex,:] = [1+2*alpha*self.expImp if col==rowIndex
-                # else -self.expImp*alpha if col==(rowIndex-1) else -self.expImp*alpha if col==(rowIndex+1)
-                # else 0 for col in range(self.N)]
-                # self.BMat[rowIndex,:] = [1-2*alpha*(1-self.expImp) if col==rowIndex
-                # else alpha*(1-self.expImp) if col==(rowIndex-1) else alpha*(1-self.expImp) if col==(rowIndex+1)
-                # else 0 for col in range(self.N)]
-
-        print("AMat :\n" + str(self.AMat))
-        print("\n\nBMat :\n" + str(self.BMat))
 
     # ANCHOR need to update function signature
     def work_step(self):
@@ -507,18 +262,11 @@ class FPE_integrator_2D(BaseIntegrator):
 
     # TODO Keep this in the base class
     def diffusionUpdate(self):
-        if(self.sparTest is True):
-            if(self.constDiff is True):
-                self.prob = self.CMat.dot(self.prob)
-            else:
-                bVec = self.BMat.dot(self.prob)
-                self.prob = scipy.sparse.linalg.spsolve(self.AMat, bVec)
+        if (self.constDiff is True):
+            self.prob = self.CMat.dot(self.prob)
         else:
-            if(self.constDiff is True):
-                self.prob = np.matmul(self.CMat, self.prob)
-            else:
-                bVec = np.matmul(self.BMat, self.prob)
-                self.prob = np.linalg.solve(self.AMat, bVec)
+            bVec = self.BMat.dot(self.prob)
+            self.prob = scipy.sparse.linalg.spsolve(self.AMat, bVec)
 
     # TODO Also put this in the base class
     def advectionUpdate(
@@ -534,7 +282,8 @@ class FPE_integrator_2D(BaseIntegrator):
         # else:
         #   self.laxWendroff(forceParams,forceFunction,deltaT)
         #   self.lax_dimSplit(forceParams,forceFunction,deltaT)
-        self.laxWendroff_lieSplit_leg(forceFunc_x, forceFunc_y, forceParams, deltaT)
+        # self.laxWendroff_lieSplit_leg(forceFunc_x, forceFunc_y, forceParams, deltaT)
+        pass
 
     # Probably just stick with LW for this? Just need to get it working...
     def lax_leg(self, forceParams: Tuple, forceFunction: Callable, deltaT: float):
