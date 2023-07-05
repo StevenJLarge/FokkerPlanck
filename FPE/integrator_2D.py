@@ -165,7 +165,9 @@ class FPE_integrator_2D(BaseIntegrator):
                 self.AMat[self.N - 1 - diag_idx, self.N - self.Nx - 1 - diag_idx] = -2 * alpha
 
         elif self.BC == "open":
-            pass
+            for image in range(1, self.Ny):
+                self.AMat[image * self.Nx - 1, image * self.Nx] = 0
+                self.AMat[image * self.Nx, image * self.Nx - 1] = 0
 
         else:
             raise ValueError(
@@ -200,7 +202,9 @@ class FPE_integrator_2D(BaseIntegrator):
                 self.BMat[self.N - 1 - diag_idx, self.N - self.Nx - 1 - diag_idx] = 0
 
         elif self.BC == "open":
-            pass
+            for image in range(1, self.Ny):
+                self.BMat[image * self.Nx - 1, image * self.Nx] = 0
+                self.BMat[image * self.Nx, image * self.Nx - 1] = 0
 
         else:
             raise ValueError(
