@@ -154,10 +154,12 @@ class FPE_integrator_2D(BaseIntegrator):
         elif self.BC == "hard-wall":
             # This resolves the HW conditions in the X-dimension, still need
             # to resolve in y
-            for image in range(0, self.Ny):
+            for image in range(0, self.Ny - 1):
                 _idx = idx + self.Nx * image
                 self.AMat[_idx, _idx] = 1 + 2 * alpha
                 self.AMat[_idx, abs(idx - 1) + self.Nx * image] = -2 * alpha
+                self.AMat[(image + 1) * self.Nx - 1, (image + 1) * self.Nx] = 0
+                self.AMat[(image + 1) * self.Nx, (image + 1) * self.Nx - 1] = 0
 
             # Need to test this / verify that this is the correct way of doing this...
             for diag_idx in range(self.Nx):
@@ -196,6 +198,8 @@ class FPE_integrator_2D(BaseIntegrator):
                 _idx = idx + self.Nx * image
                 self.BMat[_idx, _idx] = 1
                 self.BMat[_idx, abs(idx - 1) + self.Nx * image] = 0
+                self.BMat[(image + 1) * self.Nx - 1, (image + 1) * self.Nx] = 0
+                self.BMat[(image + 1) * self.Nx, (image + 1) * self.Nx - 1] = 0
 
             for diag_idx in range(self.Nx):
                 self.BMat[diag_idx, self.Nx + diag_idx] = 0
