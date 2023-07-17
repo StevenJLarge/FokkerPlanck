@@ -147,6 +147,10 @@ class FPE_integrator_2D(BaseIntegrator):
                 self.AMat[x_idx, y_idx_fw] = -self.expImp * alpha
                 self.AMat[x_idx, y_idx_rv] = -self.expImp * alpha
 
+            for image in range(1, self.Ny):
+                self.AMat[image * self.Nx - 1, image * self.Nx] = 0
+                self.AMat[image * self.Nx, image * self.Nx - 1] = 0
+
             # y-dimension BCs
             self.AMat.setdiag(-self.expImp * alpha, k=self.N - self.Nx)
             self.AMat.setdiag(-self.expImp * alpha, k=-(self.N - self.Nx))
@@ -154,17 +158,26 @@ class FPE_integrator_2D(BaseIntegrator):
         elif self.BC == "hard-wall":
             # This resolves the HW conditions in the X-dimension, still need
             # to resolve in y
-            for image in range(0, self.Ny - 1):
+            for image in range(0, self.Ny):
                 _idx = idx + self.Nx * image
-                self.AMat[_idx, _idx] = 1 + 2 * alpha
+                self.AMat[_idx, _idx] = 1 + 4 * alpha
                 self.AMat[_idx, abs(idx - 1) + self.Nx * image] = -2 * alpha
-                self.AMat[(image + 1) * self.Nx - 1, (image + 1) * self.Nx] = 0
-                self.AMat[(image + 1) * self.Nx, (image + 1) * self.Nx - 1] = 0
+
+            for image in range(1, self.Ny):
+                self.AMat[image * self.Nx - 1, image * self.Nx] = 0
+                self.AMat[image * self.Nx, image * self.Nx - 1] = 0
 
             # Need to test this / verify that this is the correct way of doing this...
             for diag_idx in range(self.Nx):
                 self.AMat[diag_idx, self.Nx + diag_idx] = -2 * alpha
                 self.AMat[self.N - 1 - diag_idx, self.N - self.Nx - 1 - diag_idx] = -2 * alpha
+
+            # These are the conditions where X and Y boudnaries are involved
+            # Check this AND look into the other terms in these rows that need to be updated
+            self.AMat[0, 0] = 1.0
+            self.AMat[-1, -1] = 1.0
+            self.AMat[self.Nx - 1, self.Ny - 1] = 1.0
+            self.AMat[self.N - self.Nx, self.N - self.Ny] = 1.0
 
         elif self.BC == "open":
             for image in range(1, self.Ny):
@@ -189,17 +202,23 @@ class FPE_integrator_2D(BaseIntegrator):
                 self.BMat[x_idx, y_idx_fw] = alpha * (1 - self.expImp)
                 self.BMat[x_idx, y_idx_rv] = alpha * (1 - self.expImp)
 
+            for image in range(1, self.Ny):
+                self.BMat[image * self.Nx - 1, image * self.Nx] = 0
+                self.BMat[image * self.Nx, image * self.Nx - 1] = 0
+
             # y-dimension BCs
             self.BMat.setdiag(alpha * (1 - self.expImp), k=self.N - self.Nx)
             self.BMat.setdiag(alpha * (1 - self.expImp), k=-(self.N - self.Nx))
 
         elif self.BC == "hard-wall":
-            for image in range(0, self.Ny - 1):
+            for image in range(0, self.Ny):
                 _idx = idx + self.Nx * image
                 self.BMat[_idx, _idx] = 1
                 self.BMat[_idx, abs(idx - 1) + self.Nx * image] = 0
-                self.BMat[(image + 1) * self.Nx - 1, (image + 1) * self.Nx] = 0
-                self.BMat[(image + 1) * self.Nx, (image + 1) * self.Nx - 1] = 0
+
+            for image in range(1, self.Ny):
+                self.BMat[image * self.Nx - 1, image * self.Nx] = 0
+                self.BMat[image * self.Nx, image * self.Nx - 1] = 0
 
             for diag_idx in range(self.Nx):
                 self.BMat[diag_idx, self.Nx + diag_idx] = 0
