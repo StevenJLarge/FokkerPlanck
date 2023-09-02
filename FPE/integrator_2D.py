@@ -137,7 +137,7 @@ class FPE_integrator_2D(BaseIntegrator):
         if self.BC == 'periodic':
             # x-dimension BCs
 
-            # Need to place top rigth and bottom left elements in each block
+            # Need to place top right and bottom left elements in each block
             # matrix for X and Y directions
             for image in range(0, self.Ny):
                 x_idx = idx + self.Nx * image
@@ -158,14 +158,31 @@ class FPE_integrator_2D(BaseIntegrator):
         elif self.BC == "hard-wall":
             # This resolves the HW conditions in the X-dimension, still need
             # to resolve in y
-            for image in range(0, self.Ny):
-                _idx = idx + self.Nx * image
-                self.AMat[_idx, _idx] = 1 + 4 * alpha
-                self.AMat[_idx, abs(idx - 1) + self.Nx * image] = -2 * alpha
+            # NOTE Need to update this, I aded the 8, but I need to figure out
+            # where the 4 goes and make sure the 2s are right, as well as
+            # resolve the multi-coordinate boundaries,..
 
-            for image in range(1, self.Ny):
-                self.AMat[image * self.Nx - 1, image * self.Nx] = 0
-                self.AMat[image * self.Nx, image * self.Nx - 1] = 0
+            # NOTE THIS IS INCORRECT....
+            # X-boundaries only
+            for image in range(1, self.Ny - 1):
+                _idx = idx + self.Nx * image
+                _idx_fwd = idx + 1 + (self.Nx * image)
+                _idx_rev = idx - 1 + (self.Nx * image)
+                self.AMat[_idx, _idx] = 1 + 4 * alpha
+                # self.AMat[_idx, abs(idx - 1) + self.Nx * image] = -1 * alpha
+                self.AMat[_idx, _idx_fwd] = -1 * alpha
+                self.AMat[_idx, _idx_rev] = -1 * alpha
+
+            # Y-boundaries only
+            for image in range(1, self.Nx - 1):
+                # We want this to change all x-index values WHEN y = 0, Ny-1.
+                # So this is all of the x-values within the top left and bottom
+                # right BLOCKS aide from the internal boundary points.
+                _idx_fwd = idx - image
+                _idx_rev = idx + image
+
+                self.AMat[_idx_fwd, _idx] = -1 * alpha
+                self.AMat[_idx_rev, _idx] = -1 * alpha
 
             # Need to test this / verify that this is the correct way of doing this...
             for diag_idx in range(self.Nx):
