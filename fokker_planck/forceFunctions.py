@@ -15,7 +15,7 @@ ForceData = Union[float, np.ndarray]
 EnergyData = Union[float, np.ndarray]
 
 
-def noForce(
+def no_force(
     position: PositionData, params: InputParameters
 ) -> ForceData:
     """Null force function, returns zero always
@@ -30,7 +30,7 @@ def noForce(
     return 0
 
 
-def constantForce(
+def constant_force(
     position: PositionData, params: InputParameters
 ) -> ForceData:
     """Constant force function, force parameters are of form [kValue]
@@ -50,7 +50,7 @@ def constantForce(
     return params[0]
 
 
-def harmonicForce(
+def harmonic_force(
     position: PositionData, params: InputParameters
 ) -> ForceData:
     """Harmonic potential force, with potential of the form
@@ -70,7 +70,7 @@ def harmonicForce(
     return -params[0] * (position - params[1])
 
 
-def harmonicEnergy(
+def harmonic_energy(
     position: PositionData, params: InputParameters
 ) -> EnergyData:
     """Harmonic energy function
@@ -90,7 +90,7 @@ def harmonicEnergy(
     return 0.5 * params[0] * ((position - params[1])**2)
 
 
-def harmonicForce_constVel(
+def harmonic_force_const_velocity(
     position: PositionData, params: InputParameters
 ) -> ForceData:
     """Effecive force function for a harmonic trap with its minimum moving at
@@ -117,7 +117,7 @@ def harmonicForce_constVel(
     return -params[0] * (position - params[1]) - params[2] / params[3]
 
 
-def harmonicEnergy_constVel(
+def harmonic_energy_const_velocity(
     position: PositionData, params: InputParameters
 ) -> EnergyData:
     """Energy function corresponding to a centered harmonic potential, but with
@@ -134,7 +134,7 @@ def harmonicEnergy_constVel(
     return 0.5 * params[0] * (position - params[1]) ** 2
 
 
-def periodicForce(
+def periodic_force(
     position: PositionData, params: InputParameters
 ) -> ForceData:
     """Force produced by a sinusoindal, periodic potential.  Force function is
@@ -161,7 +161,7 @@ def periodicForce(
     return force
 
 
-def periodicEnergy(
+def periodic_energy(
     position: PositionData, params: InputParameters
 ) -> EnergyData:
     """Energy of a periodic potential energy function, taking the form
@@ -183,7 +183,7 @@ def periodicEnergy(
     return energy
 
 
-def periodicForce_constVel(
+def periodic_force_const_velocity(
     position: PositionData, params: InputParameters
 ) -> ForceData:
     # TODO There should probably be a diffusion coefficient in here?
@@ -207,7 +207,7 @@ def periodicForce_constVel(
     return -params[2] - np.pi * params[0] * np.sin(2 * np.pi * (position - params[1]))
 
 
-def bistableForce(
+def bistable_force(
     position: PositionData, params: InputParameters
 ) -> ForceData:
     """Simple potential energy function for a bistable potential of the form.
@@ -229,7 +229,7 @@ def bistableForce(
     return params[0] * (position) - params[1] * (position**3)
 
 
-def bistableEnergy(
+def bistable_energy(
     position: PositionData, params: InputParameters
 ) -> EnergyData:
     """Energy function for simple bistable potential of the form:
@@ -249,7 +249,7 @@ def bistableEnergy(
     return -0.5 * params[0] * (position ** 2) + 0.25 * params[1] * (position ** 4)
 
 
-def ABELForce(position: PositionData, params: InputParameters) -> ForceData:
+def ABEL_force(position: PositionData, params: InputParameters) -> ForceData:
     """Force produced by a bistable ABEL trap from Ref[1]. This
     function is parameterized so that there will be potential energy minima
     at x = +- 1. The energy function is of the form
@@ -284,7 +284,7 @@ def ABELForce(position: PositionData, params: InputParameters) -> ForceData:
     return -4 * params[0] * (position ** 3 - params[1] * position - A * params[2])
 
 
-def ABELEnergy(position: PositionData, params: InputParameters) -> EnergyData:
+def ABEL_energy(position: PositionData, params: InputParameters) -> EnergyData:
     """Potential energy function of a bistable ABEL trap from Ref[1]. This
     function is parameterized so that there will be potential energy minima
     at x = +- 1. The energy function is of the form
@@ -319,7 +319,7 @@ def ABELEnergy(position: PositionData, params: InputParameters) -> EnergyData:
     return 4 * params[0] * (0.25 * (position ** 4) - 0.5 * params[1] * (position ** 2) - A * params[2] * position)
 
 
-def ABELForce_v2(position, params):
+def ABEL_force_v2(position, params):
     '''
     ABEL force v2 (current version, circa 2019), force parameters: [a,xm]
     potential energy:   0.5*a*(x+xm)^2    IF  x < -xp
@@ -329,7 +329,7 @@ def ABELForce_v2(position, params):
     pass
 
 
-def ABELEnergy_v2(position, params):
+def ABEL_energy_v2(position, params):
     pass
 
 
@@ -347,7 +347,7 @@ KSS Model potential (eriodic version of it...)
 '''
 
 
-def constForce(
+def const_force(
     x: PositionData, y: PositionData, params: InputParameters
 ) -> ForceData:
     """Constant force funtion for 2-dimensional potential energy function,
@@ -368,7 +368,7 @@ def constForce(
 
 
 # ANCHOR Harmonic potential
-def harmonicEnergy_2D(
+def harmonic_energy_2D(
     x: PositionData, y: PositionData, params: InputParameters
 ) -> EnergyData:
     """2-dimensional harmonic energy function of the form:
@@ -395,7 +395,7 @@ def harmonicEnergy_2D(
     return 0.5 * (params[0][0] * ((x - params[0][1]) ** 2) + params[1][0] * ((y - params[1][1]) ** 2))
 
 
-def harmonicForce_z(
+def harmonic_force_z(
     z: PositionData, params: InputParameters
 ) -> ForceData:
     """Force in the z-direction (where z is x or y) due to 2-D harmonic
@@ -423,7 +423,7 @@ def harmonicForce_z(
 
 
 # ANCHOR Periodic potential
-def periodicEnergy_2D(
+def periodic_energy_2D(
     x: PositionData, y: PositionData, params: InputParameters
 ) -> EnergyData:
     """2-D periodic energy function, given by the equation
@@ -448,18 +448,18 @@ def periodicEnergy_2D(
     return E_x + E_y
 
 
-def genPeriodicLandscape_2D(xArray, yArray, params):
-    energy = periodicEnergy_2D(xArray, yArray, params)
+def gen_periodic_landscape_2D(x_array, y_array, params):
+    energy = periodic_energy_2D(x_array, y_array, params)
     force = np.gradient(energy)
     force_x, force_y = force[0], force[1]
     return energy, force_x, force_y
 
 
-def periodicForce_2D(xVal, yVal, params, flag="z"):
+def periodic_force_2D(x_val, y_val, params, flag="z"):
     if flag == "x":
-        return np.pi * params[0] * np.sin(2 * np.pi * xVal)
+        return np.pi * params[0] * np.sin(2 * np.pi * x_val)
     if flag == "y":
-        return np.pi * params[1] * np.sin(2 * np.pi * yVal)
+        return np.pi * params[1] * np.sin(2 * np.pi * y_val)
     else:
         print("Error: unidentified force flag value, exiting program...")
         sys.exit()

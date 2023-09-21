@@ -1,8 +1,9 @@
 import pytest
 import numpy as np
 
-from FPE.Integrator import FPE_Integrator_1D
-import FPE.forceFunctions as ff
+from fokker_planck.Integrator import FokkerPlank1D
+from fokker_planck.types.basetypes import BoundaryCondition
+import fokker_planck.forceFunctions as ff
 
 # Testing suite: because the majority of the raw initialization and error
 # handling is handled in the diffusion and advection suites, respectively,
@@ -20,16 +21,16 @@ diff_coeff = [0.25, 0.5, 1.0]
 def test_correct_equilibrium_in_harmonic_potential(k_trap):
     # Arrange
     D = 1.0
-    fpe = FPE_Integrator_1D(D, dt, dx, x_array, boundaryCond="hard-wall")
+    fpe = FokkerPlank1D(D, dt, dx, x_array, boundary_cond=BoundaryCondition.HardWall)
     init_var = 1 / k_trap
-    fpe.initializeProbability(0, init_var)
+    fpe.initialize_probability(0, init_var)
     init_prob = fpe.prob.copy()
-    eq_theory = np.exp(-ff.harmonicEnergy(x_array, ([k_trap, 0])))
+    eq_theory = np.exp(-ff.harmonic_energy(x_array, ([k_trap, 0])))
     eq_theory = eq_theory / np.sum(eq_theory * dx)
 
     # Act
     for _ in range(100):
-        fpe.integrate_step(([k_trap, 0]), ff.harmonicForce)
+        fpe.integrate_step(([k_trap, 0]), ff.harmonic_force)
 
     # Assert -- on average errors do no exceed 0.0001 per element
     assert sum(np.abs(eq_theory - init_prob)) < (1e-4 * len(x_array))
@@ -43,10 +44,10 @@ def test_correct_relaxation_of_mean_harmonic_system(k_trap, D_input):
     # Use local dx and x_array here so that CFL is satisfied for all parameters
     dx_local = 0.05
     x_array_local = np.arange(-2, 1, dx_local)
-    fpe = FPE_Integrator_1D(D_input, dt, dx_local, x_array_local, boundaryCond="hard-wall")
+    fpe = FokkerPlank1D(D_input, dt, dx_local, x_array_local, boundary_cond=BoundaryCondition.HardWall)
     eq_var = 1 / k_trap
     init_mean = -1
-    fpe.initializeProbability(init_mean, eq_var)
+    fpe.initialize_probability(init_mean, eq_var)
     n_steps = 100
 
     time_tracker = np.zeros(n_steps)
@@ -55,7 +56,7 @@ def test_correct_relaxation_of_mean_harmonic_system(k_trap, D_input):
 
     # Act
     for i in range(n_steps):
-        fpe.integrate_step(([k_trap, 0]), ff.harmonicForce)
+        fpe.integrate_step(([k_trap, 0]), ff.harmonic_force)
         mean_tracker.append(fpe.mean.copy())
         time_tracker[i] = current_time
         current_time += fpe.dt
@@ -73,11 +74,11 @@ def test_variance_relaxation_harmonic(k_trap, D_input):
     # Use local dx and x_array here so that CFL is satisfied for all parameters
     dx_local = 0.05
     x_array_local = np.arange(-1.5, 1.5, dx_local)
-    fpe = FPE_Integrator_1D(D_input, dt, dx_local, x_array_local, boundaryCond="hard-wall")
+    fpe = FokkerPlank1D(D_input, dt, dx_local, x_array_local, boundary_cond=BoundaryCondition.HardWall)
     eq_var = 1 / k_trap
     init_var = 2 * eq_var
     eq_mean = 0
-    fpe.initializeProbability(eq_mean, init_var)
+    fpe.initialize_probability(eq_mean, init_var)
     n_steps = 100
 
     time_tracker = np.zeros(n_steps)
@@ -86,7 +87,7 @@ def test_variance_relaxation_harmonic(k_trap, D_input):
 
     # Act
     for i in range(n_steps):
-        fpe.integrate_step(([k_trap, 0]), ff.harmonicForce)
+        fpe.integrate_step(([k_trap, 0]), ff.harmonic_force)
         variance_tracker.append(fpe.variance.copy())
         time_tracker[i] = current_time
         current_time += fpe.dt

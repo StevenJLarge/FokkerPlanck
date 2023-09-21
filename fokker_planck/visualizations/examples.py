@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from typing import List, Optional, Iterable
 
-from FPE.util import notebooks
+from fokker_planck.util import notebooks
 
 
 # SECTION - Helper routines

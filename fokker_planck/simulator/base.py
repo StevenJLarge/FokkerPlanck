@@ -1,10 +1,10 @@
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 import numpy as np
 import scipy.interpolate
 from typing import Dict, Optional, Union, Iterable
 
-from FPE.types.basetypes import CPVector
-from FPE.Integrator import FPE_Integrator_1D
+from fokker_planck.types.basetypes import CPVector
+from fokker_planck.Integrator import FokkerPlank1D
 
 
 class SimulationResult:
@@ -17,7 +17,7 @@ class SimulationResult:
         self.time = time_tracker
 
 
-class BaseSimulator(metaclass=ABCMeta):
+class BaseSimulator(ABC):
 
     def __init__(self, lambda_init: CPVector, lambda_fin: CPVector):
         self.lambda_init = lambda_init
@@ -33,9 +33,9 @@ class Simulator1D(BaseSimulator):
         self, fpe_config: Dict, lambda_init: CPVector, lambda_fin: CPVector,
         n_lambda: Optional[int] = 500
     ):
-        fpe_args, fpe_kwargs = self._parseInputConfig(fpe_config)
+        fpe_args, fpe_kwargs = self._parse_input_config(fpe_config)
         D, dt, dx, x_array = fpe_args
-        self.fpe = FPE_Integrator_1D(D, dt, dx, x_array, **fpe_kwargs)
+        self.fpe = FokkerPlank1D(D, dt, dx, x_array, **fpe_kwargs)
         self.lambda_array = np.linspace(lambda_init, lambda_fin, n_lambda)
 
         super().__init__(lambda_init, lambda_fin)
@@ -43,7 +43,7 @@ class Simulator1D(BaseSimulator):
     def reset(self):
         self.fpe.reset()
 
-    def _parseInputConfig(self, input_config: Dict):
+    def _parse_input_config(self, input_config: Dict):
         # Key elements
         key_elements = ["D", "dx", "dt", "x_array", "x_min", "x_max"]
 
@@ -137,7 +137,7 @@ class Simulator1D(BaseSimulator):
         cp_tracker = []
 
         self.initialize_probability()
-        self.fpe.initializePhysicalTrackers()
+        self.fpe.init_physical_trackers()
 
         for i in enumerate(protocol[:-1]):
             if i % 10 == 0:

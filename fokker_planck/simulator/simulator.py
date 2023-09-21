@@ -4,9 +4,9 @@
 from typing import Iterable, Optional, Dict, Callable
 import numpy as np
 
-from FPE.types.basetypes import CPVector
-from FPE.Simulator.base import Simulator1D
-import FPE.forceFunctions as ff
+from fokker_planck.types.basetypes import CPVector
+from fokker_planck.Simulator.base import Simulator1D
+import fokker_planck.forceFunctions as ff
 
 
 class Protocol:
@@ -36,7 +36,7 @@ class BreathingSimulator(Simulator1D):
         return self.lambda_array ** (3/2)
 
     def initialize_probability(self):
-        self.fpe.initializeProbability(0, 1 / self.lambda_init)
+        self.fpe.initialize_probability(0, 1 / self.lambda_init)
 
     def update(self, protocol_bkw: CPVector, protocol_fwd: CPVector):
         params_bkw = ([protocol_bkw, 0])
@@ -51,8 +51,8 @@ class HarmonicTranslationSimulator(Simulator1D):
     def __init__(
         self, fpe_config: Dict, trap_init: float,
         trap_fin: float, trap_strength: float,
-        forceFunction: Optional[Callable] = ff.harmonicForce_constVel,
-        energyFunction: Optional[Callable] = ff.harmonicEnergy_constVel,
+        forceFunction: Optional[Callable] = ff.harmonic_force_const_velocity,
+        energyFunction: Optional[Callable] = ff.harmonic_energy_const_velocity,
     ):
         super().__init__(fpe_config, trap_init, trap_fin)
         self.forceFunc = forceFunction
@@ -63,7 +63,7 @@ class HarmonicTranslationSimulator(Simulator1D):
         return np.ones_like(self.lambda_array)
 
     def initialize_probability(self):
-        self.fpe.initializeProbability(self.lambda_init, 1 / self.trap_strength)
+        self.fpe.initialize_probability(self.lambda_init, 1 / self.trap_strength)
 
     def update(self, protocol_bkw: CPVector, protocol_fwd: CPVector):
         dlambda = protocol_fwd - protocol_bkw
@@ -95,15 +95,15 @@ if __name__ == "__main__":
     }
 
     breathing_1 = BreathingSimulator(
-        config_1, 0.5, 4.0, ff.harmonicForce, ff.harmonicEnergy
+        config_1, 0.5, 4.0, ff.harmonic_force, ff.harmonic_energy
     )
     breathing_2 = BreathingSimulator(
-        config_2, 0.5, 4.0, ff.harmonicForce, ff.harmonicEnergy
+        config_2, 0.5, 4.0, ff.harmonic_force, ff.harmonic_energy
     )
 
     harmonic_trap = HarmonicTranslationSimulator(
-        config_1, 0, 5, 8, ff.harmonicForce_constVel,
-        ff.harmonicEnergy_constVel
+        config_1, 0, 5, 8, ff.harmonic_force_const_velocity,
+        ff.harmonic_energy_const_velocity
     )
 
     proto_n_1 = breathing_1.build_protocol(1.5, mode="naive")
