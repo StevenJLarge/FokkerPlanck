@@ -92,3 +92,4 @@ target/
 fokkerPlanck_archive/
 docs/originalProject/
 figures/*
+fokker_planck/visualizations/*

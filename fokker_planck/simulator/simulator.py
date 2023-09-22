@@ -5,7 +5,7 @@ from typing import Iterable, Optional, Dict, Callable
 import numpy as np
 
 from fokker_planck.types.basetypes import CPVector
-from fokker_planck.Simulator.base import Simulator1D
+from fokker_planck.simulator.base import Simulator1D
 import fokker_planck.forceFunctions as ff
 
 
