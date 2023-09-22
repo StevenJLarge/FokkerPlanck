@@ -63,7 +63,7 @@ class FokkerPlank1D(Integrator):
 
         self.N = len(x_array)
         self.prob = np.ones(self.N) / (self.N * self.dx)
-        self.xArray = x_array
+        self.x_array = x_array
 
         self.init_diffusion_matrix()
 
@@ -73,11 +73,11 @@ class FokkerPlank1D(Integrator):
 
     @property
     def mean(self) -> float:
-        return np.sum(self.prob * self.xArray * self.dx)
+        return np.sum(self.prob * self.x_array * self.dx)
 
     @property
     def variance(self) -> float:
-        return np.sum(((self.xArray - self.mean) ** 2) * self.prob * self.dx)
+        return np.sum(((self.x_array - self.mean) ** 2) * self.prob * self.dx)
 
     def reset(
         self, variance: Optional[float] = None, mean: Optional[float] = None
@@ -108,7 +108,7 @@ class FokkerPlank1D(Integrator):
         self.powerTracker = []
         self.timeTracker = []
 
-        self.flux = np.zeros(len(self.xArray))
+        self.flux = np.zeros(len(self.x_array))
         # Total (integrated) flux tracker
         self.fluxTracker = 0
 
@@ -119,7 +119,7 @@ class FokkerPlank1D(Integrator):
             mean (float): mean of distribution
             var (float): variance of distribution
         """
-        self.prob = np.exp(-(0.5 / var) * ((self.xArray - mean)**2))
+        self.prob = np.exp(-(0.5 / var) * ((self.x_array - mean)**2))
         self.prob = self.prob / (sum(self.prob) * self.dx)
 
     def initialize_user_probability(
@@ -134,7 +134,7 @@ class FokkerPlank1D(Integrator):
             params (Optional[Tuple], optional): Tuple of parameters for the
                 input probability function. Defaults to None.
         """
-        self.prob = func(self.xArray, *params)
+        self.prob = func(self.x_array, *params)
         self.prob = self.prob / (sum(self.prob) * self.dx)
 
     def check_CFL(self, force_params: Tuple, force_function: Callable) -> bool:
@@ -289,10 +289,10 @@ class FokkerPlank1D(Integrator):
 
         # Calculate average energy before and after update to force parameters
         currEnergy = (
-            sum(energy_function(self.xArray, force_params_pre) * self.prob) * self.dx
+            sum(energy_function(self.x_array, force_params_pre) * self.prob) * self.dx
         )
         newEnergy = (
-            sum(energy_function(self.xArray, force_params_post) * self.prob) * self.dx
+            sum(energy_function(self.x_array, force_params_post) * self.prob) * self.dx
         )
 
         self.integrate_step(force_params_post, force_function)
@@ -323,7 +323,7 @@ class FokkerPlank1D(Integrator):
         """
         # flux as a function of position
         self.flux = (
-            self.D * force_function(self.xArray, force_params) * self.prob
+            self.D * force_function(self.x_array, force_params) * self.prob
             - self.D * np.gradient(self.prob)
         )
         # Calculate integrated (net) flux over current configuration
@@ -393,7 +393,7 @@ class FokkerPlank1D(Integrator):
                 - self._get_flux_diff_lax_wendroff(force_function, force_params, delta_t, i)
             )
             half_flux[i + 1] = (
-                force_function(self.xArray[i] + 0.5 * self.dx, force_params) * half_prob[i + 1]
+                force_function(self.x_array[i] + 0.5 * self.dx, force_params) * half_prob[i + 1]
             )
 
         # Boundary terms
@@ -411,7 +411,7 @@ class FokkerPlank1D(Integrator):
             )
  
             half_flux[0] = (
-                force_function(self.xArray[0] - 0.5 * self.dx, force_params) * half_prob[0]
+                force_function(self.x_array[0] - 0.5 * self.dx, force_params) * half_prob[0]
             )
             half_flux[-1] = half_flux[0]
 
@@ -419,25 +419,25 @@ class FokkerPlank1D(Integrator):
 
             fluxFw = (
                 (self.D * delta_t / (2 * self.dx))
-                * force_function(self.xArray[0], force_params)
+                * force_function(self.x_array[0], force_params)
                 * self.prob[0]
             )
             fluxRev = (
                 (self.D * delta_t / (2 * self.dx))
-                * force_function(self.xArray[-1], force_params)
+                * force_function(self.x_array[-1], force_params)
                 * self.prob[-1]
             )
             half_prob[0] = 0.5 * self.prob[0] - fluxFw
             half_prob[-1] = 0.5 * self.prob[-1] + fluxRev
-            half_flux[0] = force_function(self.xArray[0] - 0.5 * self.dx, force_params) * half_prob[0]
-            half_flux[-1] = force_function(self.xArray[-1] + 0.5 * self.dx, force_params) * half_prob[-1]
+            half_flux[0] = force_function(self.x_array[0] - 0.5 * self.dx, force_params) * half_prob[0]
+            half_flux[-1] = force_function(self.x_array[-1] + 0.5 * self.dx, force_params) * half_prob[-1]
 
         else:
             # Hard wall boundaries
             half_prob[0] = 0.5 * self.prob[0]
             half_prob[-1] = 0.5 * self.prob[-1]
-            half_flux[0] = force_function(self.xArray[0] - 0.5 * self.dx, force_params) * half_prob[0]
-            half_flux[-1] = force_function(self.xArray[0] - 0.5 * self.dx, force_params) * half_prob[-1]
+            half_flux[0] = force_function(self.x_array[0] - 0.5 * self.dx, force_params) * half_prob[0]
+            half_flux[-1] = force_function(self.x_array[0] - 0.5 * self.dx, force_params) * half_prob[-1]
 
         return half_flux
 
@@ -463,12 +463,12 @@ class FokkerPlank1D(Integrator):
         """
         fluxFw = (
             (self.D * delta_t / (2 * self.dx))
-            * force_function(self.xArray[(idx + 1) % len(self.xArray)], force_params)
-            * self.prob[(idx + 1) % len(self.xArray)]
+            * force_function(self.x_array[(idx + 1) % len(self.x_array)], force_params)
+            * self.prob[(idx + 1) % len(self.x_array)]
         )
         fluxRev = (
             (self.D * delta_t / (2 * self.dx))
-            * force_function(self.xArray[idx], force_params)
+            * force_function(self.x_array[idx], force_params)
             * self.prob[idx]
         )
 

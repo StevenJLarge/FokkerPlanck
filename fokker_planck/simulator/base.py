@@ -7,16 +7,6 @@ from fokker_planck.types.basetypes import CPVector
 from fokker_planck.Integrator import FokkerPlank1D
 
 
-class SimulationResult:
-    def __init__(
-        self, cp_tracker: Iterable, prob_tracker: Iterable,
-        time_tracker: Iterable
-    ):
-        self.CP = cp_tracker
-        self.prob_tracker = prob_tracker
-        self.time = time_tracker
-
-
 class BaseSimulator(ABC):
 
     def __init__(self, lambda_init: CPVector, lambda_fin: CPVector):
@@ -139,13 +129,13 @@ class Simulator1D(BaseSimulator):
         self.initialize_probability()
         self.fpe.init_physical_trackers()
 
-        for i in enumerate(protocol[:-1]):
+        for i, p in enumerate(protocol[:-1]):
             if i % 10 == 0:
                 prob_tracker.append(self.fpe.prob)
                 time_tracker.append(self.time_array[i])
-                cp_tracker.append(protocol[i])
+                cp_tracker.append(p)
 
-            self.update(protocol[i], protocol[i+1])
+            self.update(p, protocol[i+1])
 
         return SimulationResult(self, cp_tracker, prob_tracker, time_tracker)
 
@@ -160,6 +150,17 @@ class Simulator1D(BaseSimulator):
     @abstractmethod
     def update(self, protocol_bkw: CPVector, protocol_fwd: CPVector):
         ...
+
+
+class SimulationResult:
+    def __init__(
+        self, sim: BaseSimulator, cp_tracker: Iterable, prob_tracker: Iterable,
+        time_tracker: Iterable
+    ):
+        self._sim = sim
+        self.CP = cp_tracker
+        self.prob_tracker = prob_tracker
+        self.time = time_tracker
 
 
 # Empty class implementation for testing base functionality

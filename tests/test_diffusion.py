@@ -81,7 +81,7 @@ def test_diffusion_relation(D):
     time = 0
     fpe = Integrator.FokkerPlank1D(D, dt, dx, x_array_large, boundary_cond=BoundaryCondition.Open)
     fpe.initialize_probability(0, init_var)
-    var_tracker = [variance(fpe.get_prob, fpe.xArray)]
+    var_tracker = [variance(fpe.get_prob, fpe.x_array)]
     time_tracker = [time]
     theory_slope = 2 * D
 
@@ -89,7 +89,7 @@ def test_diffusion_relation(D):
     for _ in range(n_steps):
         time += dt
         fpe.diffusion_update()
-        var_tracker.append(variance(fpe.prob, fpe.xArray))
+        var_tracker.append(variance(fpe.prob, fpe.x_array))
         time_tracker.append(time)
 
     Y = np.array(var_tracker) + init_var
