@@ -72,6 +72,9 @@ class HarmonicTranslationSimulator(Simulator1D):
         params_bkw = ([self.trap_strength, 0, cp_vel, self.fpe.D])
         params_fwd = ([self.trap_strength, dlambda, cp_vel, self.fpe.D])
 
+        if not self.fpe.check_CFL(params_fwd, self.forceFunc):
+            raise ValueError('CFL not satisfied!')
+
         self.fpe.work_step(
             params_bkw, params_fwd, self.forceFunc, self.energyFunc
         )

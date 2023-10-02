@@ -24,7 +24,7 @@ class Simulator1D(BaseSimulator):
         n_lambda: Optional[int] = 500
     ):
         fpe_args, fpe_kwargs = self._parse_input_config(fpe_config)
-        D, dt, dx, x_array = fpe_args
+        D, dx, dt, x_array = fpe_args
         self.fpe = FokkerPlank1D(D, dt, dx, x_array, **fpe_kwargs)
         self.lambda_array = np.linspace(lambda_init, lambda_fin, n_lambda)
 
