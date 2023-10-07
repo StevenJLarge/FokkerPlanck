@@ -42,7 +42,15 @@ class HarmonicEquilibrationSimulator(StaticSimulator1D):
 
 
 class PeriodicEquilibrationSimulator(StaticSimulator1D):
-    pass
+    def __init__(
+        self, fpe_config: Dict, amp: float, n_minima: int, phase_shift: float = 0
+    ):
+        super().__init__(fpe_config)
+        self.force_func = ff.periodic_force
+        self.force_params = [amp, n_minima, phase_shift]
+
+    def initialize_probability(self):
+        pass
 
 
 # DYNAMIC SIMULATORS
