@@ -5,7 +5,7 @@ from typing import Iterable, Optional, Dict, Callable
 import numpy as np
 
 from fokker_planck.types.basetypes import CPVector
-from fokker_planck.simulator.base import Simulator1D
+from fokker_planck.simulator.base import StaticSimulator1D, DynamicSimulator1D
 import fokker_planck.forceFunctions as ff
 
 
@@ -23,7 +23,30 @@ class Protocol:
         return self._time
 
 
-class BreathingSimulator(Simulator1D):
+# STATIC SIMUlATORS
+class HarmonicEquilibrationSimulator(StaticSimulator1D):
+    def __init__(
+        self, fpe_config: Dict, k_trap: float, trap_min: Optional[float] = 0
+    ):
+        super().__init__(fpe_config)
+        self.force_func = ff.harmonic_force
+        self.force_params = [trap_min, k_trap]
+
+    def initialize_probability(self, init_var: Optional[float] = None):
+        if init_var is None:
+            x_len = len(self.fpe_args.x_array)
+            uni_prob = (np.ones(x_len) / (x_len * self.fpe_args.dx))
+            self.fpe_prob = uni_prob
+        else:
+            self.fpe.iniitialize_probability(self.force_params[0], init_var)
+
+
+class PeriodicEquilibrationSimulator(StaticSimulator1D):
+    pass
+
+
+# DYNAMIC SIMULATORS
+class BreathingSimulator(DynamicSimulator1D):
     def __init__(
         self, fpe_config: Dict, k_i: float, k_f: float,
         forceFunction: Callable, energyFunction: Callable
@@ -41,22 +64,24 @@ class BreathingSimulator(Simulator1D):
     def update(self, protocol_bkw: CPVector, protocol_fwd: CPVector):
         params_bkw = ([protocol_bkw, 0])
         params_fwd = ([protocol_fwd, 0])
+        if not self.check_cfl(params_fwd, self.force_func):
+            raise ValueError('CFL not satisfied!')
 
         self.fpe.work_step(
             params_bkw, params_fwd, self.forceFunc, self.energyFunc
         )
 
 
-class HarmonicTranslationSimulator(Simulator1D):
+class HarmonicTranslationSimulator(DynamicSimulator1D):
     def __init__(
         self, fpe_config: Dict, trap_init: float,
         trap_fin: float, trap_strength: float,
-        forceFunction: Optional[Callable] = ff.harmonic_force_const_velocity,
-        energyFunction: Optional[Callable] = ff.harmonic_energy_const_velocity,
+        force_function: Optional[Callable] = ff.harmonic_force_const_velocity,
+        energy_function: Optional[Callable] = ff.harmonic_energy_const_velocity,
     ):
         super().__init__(fpe_config, trap_init, trap_fin)
-        self.forceFunc = forceFunction
-        self.energyFunc = energyFunction
+        self.force_func = force_function
+        self.energy_func = energy_function
         self.trap_strength = trap_strength
 
     def build_friction_array(self) -> np.ndarray:
@@ -72,11 +97,11 @@ class HarmonicTranslationSimulator(Simulator1D):
         params_bkw = ([self.trap_strength, 0, cp_vel, self.fpe.D])
         params_fwd = ([self.trap_strength, dlambda, cp_vel, self.fpe.D])
 
-        if not self.fpe.check_CFL(params_fwd, self.forceFunc):
+        if not self.check_cfl(params_fwd, self.force_func):
             raise ValueError('CFL not satisfied!')
 
         self.fpe.work_step(
-            params_bkw, params_fwd, self.forceFunc, self.energyFunc
+            params_bkw, params_fwd, self.force_func, self.energy_func
         )
 
 
