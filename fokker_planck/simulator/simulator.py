@@ -30,7 +30,7 @@ class HarmonicEquilibrationSimulator(StaticSimulator1D):
     ):
         super().__init__(fpe_config)
         self.force_func = ff.harmonic_force
-        self.force_params = [trap_min, k_trap]
+        self.force_params = [k_trap, trap_min]
 
     def initialize_probability(self, init_var: Optional[float] = None):
         if init_var is None:
@@ -38,19 +38,31 @@ class HarmonicEquilibrationSimulator(StaticSimulator1D):
             uni_prob = (np.ones(x_len) / (x_len * self.fpe_args.dx))
             self.fpe_prob = uni_prob
         else:
-            self.fpe.iniitialize_probability(self.force_params[0], init_var)
+            self.fpe.initialize_probability(self.force_params[1], init_var)
 
 
 class PeriodicEquilibrationSimulator(StaticSimulator1D):
     def __init__(
-        self, fpe_config: Dict, amp: float, n_minima: int, phase_shift: float = 0
+        self, fpe_config: Dict, amp: float, n_minima: int,
+        phase_shift: float = 0
     ):
         super().__init__(fpe_config)
         self.force_func = ff.periodic_force
         self.force_params = [amp, n_minima, phase_shift]
 
-    def initialize_probability(self):
-        pass
+    def initialize_probability(self, classification: Optional[str] = None, **kwargs):
+        if classification is None:
+            x_len = len(self.fpe_args.x_array)
+            uni_prob = np.ones(x_len) / (x_len * self.fpe_args.dx)
+            self.fpe_prob = uni_prob
+
+        if classification.lower() == 'gaussian':
+            self.fpe.initialize_probability(**kwargs)
+
+        raise NotImplementedError(
+            f'Probability classificaition {classification} not recognized, '
+            'currently only None (uniform) and gaussian are supported'
+        )
 
 
 # DYNAMIC SIMULATORS

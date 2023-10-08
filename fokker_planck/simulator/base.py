@@ -25,7 +25,6 @@ class BaseSimulator(ABC):
             raise ValueError('CFL not satisfied!')
 
 
-
 class KeyElements1D(Enum):
     D: float = auto()
     dx: float = auto()
@@ -37,6 +36,10 @@ class KeyElements1D(Enum):
     @classmethod
     def __iter__(cls):
         return iter(cls._member_map_.values())
+
+    @classmethod
+    def members(cls):
+        return cls._member_names_
 
 
 class InputParams:
@@ -72,7 +75,7 @@ class Simulator1D(BaseSimulator):
         key_elem_dict = defaultdict(lambda: None)
         # for k in key_elements:
         for k in self.key_elems:
-            key_elem_dict[k] = input_config.get(k, None)
+            key_elem_dict[k.name] = input_config.get(k.name, None)
 
         if (
             (key_elem_dict['x_array'] is None)
@@ -92,9 +95,11 @@ class Simulator1D(BaseSimulator):
         if key_elem_dict['x_array'] is None:
             x_min, x_max, dx = key_elem_dict['x_min'], key_elem_dict['x_max'], key_elem_dict['dx']
             key_elem_dict['x_array'] = np.arange(x_min, x_max, dx)
+            del key_elem_dict['x_min']
+            del key_elem_dict['x_max']
 
         additional_specs = {
-            k: v for k, v in input_config.items() if k not in self.key_elems
+            k: v for k, v in input_config.items() if k not in self.key_elems.members()
         }
         return InputParams(key_elem_dict), InputParams(additional_specs)
 
@@ -120,8 +125,7 @@ class StaticSimulator1D(Simulator1D):
         self.initialize_probability()
         self.fpe.init_physical_trackers()
 
-        if not self.check_cfl(self.force_params, self.force_func):
-            raise ValueError('CFL not satisfied!')
+        self.check_cfl(self.force_params)
 
         for i, t in enumerate(time_array):
             if i % self.tracking_stride:
