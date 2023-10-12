@@ -250,13 +250,13 @@ class Integrator(ABC):
                 (x, *args) that gives the force on the system as function of
                 its position
         """
-        if (self.split_method == SplitMethod.Lie):
+        if (self.split_method is SplitMethod.Lie):
             self._integrate_step_lie(force_params, force_function)
 
-        elif (self.split_method == SplitMethod.Strang):
+        elif (self.split_method is SplitMethod.Strang):
             self._integrate_step_strang(force_params, force_function)
 
-        elif (self.split_method == SplitMethod.SymStrang):
+        elif (self.split_method is SplitMethod.SymStrang):
             self._integrate_step_SWSS(force_params, force_function)
         else:
             self._integrate_step_strang(force_params, force_function)
