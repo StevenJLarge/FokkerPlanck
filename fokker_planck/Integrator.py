@@ -327,7 +327,7 @@ class FokkerPlanck1D(Integrator):
             - self.D * np.gradient(self.prob)
         )
         # Calculate integrated (net) flux over current configuration
-        self.fluxTracker = sum(self.flux) * self.dx
+        self.flux_tracker = sum(self.flux) * self.dx
         self.integrate_step(force_params, force_function)
 
     def lax_wendroff(
