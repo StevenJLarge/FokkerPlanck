@@ -6,7 +6,7 @@ import scipy.interpolate
 from typing import Dict, Optional, Union, Iterable, Tuple, Callable
 
 from fokker_planck.types.basetypes import CPVector
-from fokker_planck.Integrator import FokkerPlank1D
+from fokker_planck.integrator import FokkerPlanck1D
 from fokker_planck.base import Integrator
 
 
@@ -61,7 +61,7 @@ class Simulator1D(BaseSimulator):
         super().__init__(tracking_stride=tracking_stride)
         self.key_elems = KeyElements1D
         self.fpe_args, self.fpe_kwargs = self._parse_input_config(fpe_config)
-        self.fpe = FokkerPlank1D(
+        self.fpe = FokkerPlanck1D(
             **self.fpe_args.as_dict, **self.fpe_kwargs.as_dict
         )
 

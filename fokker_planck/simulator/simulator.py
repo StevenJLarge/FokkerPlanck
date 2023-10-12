@@ -35,7 +35,9 @@ class HarmonicEquilibrationSimulator(StaticSimulator1D):
     def initialize_probability(self, init_var: Optional[float] = None):
         if init_var is None:
             x_len = len(self.fpe_args.x_array)
-            uni_prob = (np.ones(x_len) / (x_len * self.fpe_args.dx))
+            uni_prob = (np.ones(x_len) / ((x_len - 2) * self.fpe_args.dx))
+            uni_prob[0] = 0
+            uni_prob[-1] = 0
             self.fpe_prob = uni_prob
         else:
             self.fpe.initialize_probability(self.force_params[1], init_var)

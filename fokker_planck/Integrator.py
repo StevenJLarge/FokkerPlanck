@@ -21,7 +21,7 @@ from fokker_planck.types.basetypes import (
 )
 
 
-class FokkerPlank1D(Integrator):
+class FokkerPlanck1D(Integrator):
     """1-dimensional Fokker-Planck integrator class, inherits from
     BaseIntegrator class
     """
@@ -299,11 +299,11 @@ class FokkerPlank1D(Integrator):
 
         # Work done per step is given by the change in average energy through
         # force function update
-        self.workAccumulator += newEnergy - currEnergy
-        self.workTracker.append(self.workAccumulator)
+        self.work_accumulator += newEnergy - currEnergy
+        self.work_tracker.append(self.work_accumulator)
         # Power is the change in work, divided by the time over which the change
         # occurred (which is dt here)
-        self.powerTracker.append((newEnergy - currEnergy) / self.dt)
+        self.power_tracker.append((newEnergy - currEnergy) / self.dt)
 
     def flux_step(self, force_params: Tuple, force_function: Callable):
         """Similar to work_step(...) this routine wraps the integrate_step in
@@ -415,7 +415,7 @@ class FokkerPlank1D(Integrator):
             )
             half_flux[-1] = half_flux[0]
 
-        elif self.BC == BoundaryCondition.Periodic:
+        elif self.BC == BoundaryCondition.Open:
 
             fluxFw = (
                 (self.D * delta_t / (2 * self.dx))
@@ -480,6 +480,6 @@ if __name__ == "__main__":
     dx = 0.01
     dt = 0.01
     x_array = np.arange(-1, 1, dx)
-    fpe = FokkerPlank1D(D, dt, dx, x_array)
+    fpe = FokkerPlanck1D(D, dt, dx, x_array)
 
     print("-- DONE --")
