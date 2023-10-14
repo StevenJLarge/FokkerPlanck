@@ -257,7 +257,7 @@ class SimulationResult:
 
 
 # Empty class implementation for testing base functionality
-class VoidSimulator(Simulator1D):
+class VoidSimulator(DynamicSimulator1D):
     def __init__(self, fpe_config: Dict):
         super().__init__(fpe_config, 0, 1)
 

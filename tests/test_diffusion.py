@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from fokker_planck import Integrator
+from fokker_planck.integrator import FokkerPlanck1D
 from fokker_planck.types.basetypes import DiffScheme, BoundaryCondition
 import statsmodels.api as sm
 
@@ -20,8 +20,8 @@ init_var = 1 / 128
 # Check correct instantiation of constDiff parameter
 def test_constDiff_parameter_initialized_correctly():
     # Arrange / Act
-    fpe_cd = Integrator.FokkerPlank1D(D, dt, dx, x_array, const_diffusion=True)
-    fpe_no_cd = Integrator.FokkerPlank1D(D, dt, dx, x_array, const_diffusion=False)
+    fpe_cd = FokkerPlanck1D(D, dt, dx, x_array, const_diffusion=True)
+    fpe_no_cd = FokkerPlanck1D(D, dt, dx, x_array, const_diffusion=False)
 
     # Assert
     assert fpe_cd.const_diffusion is True
@@ -33,7 +33,7 @@ def test_constDiff_parameter_initialized_correctly():
 def test_normalization_preservation(BC):
     # Arrange
     n_steps = 10
-    fpe = Integrator.FokkerPlank1D(D, dt, dx, x_array, boundary_cond=BC)
+    fpe = FokkerPlanck1D(D, dt, dx, x_array, boundary_cond=BC)
     fpe.initialize_probability(0, init_var)
 
     # Act
@@ -52,7 +52,7 @@ def test_normalization_preservation(BC):
 @pytest.mark.parametrize('scheme', integrator_schemes)
 def test_initialization_of_explicit_implicit_schemes(scheme):
     # Arrange / Act
-    fpe = Integrator.FokkerPlank1D(D, dt, dx, x_array, diff_scheme=scheme)
+    fpe = FokkerPlanck1D(D, dt, dx, x_array, diff_scheme=scheme)
 
     # Assert
     assert fpe.diff_scheme == scheme
@@ -61,7 +61,7 @@ def test_initialization_of_explicit_implicit_schemes(scheme):
 def test_default_diffusion_scheme_initialization():
     # Arrange / Act / Assert
     with pytest.raises(ValueError):
-        _ = Integrator.FokkerPlank1D(D, dt, dx, x_array, diff_scheme="UNSUPPORTED")
+        _ = FokkerPlanck1D(D, dt, dx, x_array, diff_scheme="UNSUPPORTED")
 
 
 # Test Diffusion relation
@@ -79,7 +79,7 @@ def test_diffusion_relation(D):
     n_steps = int((total_time / dt) / (2 * D))
     error_tolerance = 0.1
     time = 0
-    fpe = Integrator.FokkerPlank1D(D, dt, dx, x_array_large, boundary_cond=BoundaryCondition.Open)
+    fpe = FokkerPlanck1D(D, dt, dx, x_array_large, boundary_cond=BoundaryCondition.Open)
     fpe.initialize_probability(0, init_var)
     var_tracker = [variance(fpe.get_prob, fpe.x_array)]
     time_tracker = [time]

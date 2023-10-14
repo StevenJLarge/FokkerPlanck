@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 
-from fokker_planck.Integrator import FokkerPlank1D
+from fokker_planck.integrator import FokkerPlanck1D
 from fokker_planck.types.basetypes import BoundaryCondition
 import fokker_planck.forceFunctions as ff
 
@@ -21,7 +21,7 @@ diff_coeff = [0.25, 0.5, 1.0]
 def test_correct_equilibrium_in_harmonic_potential(k_trap):
     # Arrange
     D = 1.0
-    fpe = FokkerPlank1D(D, dt, dx, x_array, boundary_cond=BoundaryCondition.HardWall)
+    fpe = FokkerPlanck1D(D, dt, dx, x_array, boundary_cond=BoundaryCondition.HardWall)
     init_var = 1 / k_trap
     fpe.initialize_probability(0, init_var)
     init_prob = fpe.prob.copy()
@@ -44,7 +44,7 @@ def test_correct_relaxation_of_mean_harmonic_system(k_trap, D_input):
     # Use local dx and x_array here so that CFL is satisfied for all parameters
     dx_local = 0.05
     x_array_local = np.arange(-2, 1, dx_local)
-    fpe = FokkerPlank1D(D_input, dt, dx_local, x_array_local, boundary_cond=BoundaryCondition.HardWall)
+    fpe = FokkerPlanck1D(D_input, dt, dx_local, x_array_local, boundary_cond=BoundaryCondition.HardWall)
     eq_var = 1 / k_trap
     init_mean = -1
     fpe.initialize_probability(init_mean, eq_var)
@@ -74,7 +74,7 @@ def test_variance_relaxation_harmonic(k_trap, D_input):
     # Use local dx and x_array here so that CFL is satisfied for all parameters
     dx_local = 0.05
     x_array_local = np.arange(-1.5, 1.5, dx_local)
-    fpe = FokkerPlank1D(D_input, dt, dx_local, x_array_local, boundary_cond=BoundaryCondition.HardWall)
+    fpe = FokkerPlanck1D(D_input, dt, dx_local, x_array_local, boundary_cond=BoundaryCondition.HardWall)
     eq_var = 1 / k_trap
     init_var = 2 * eq_var
     eq_mean = 0
