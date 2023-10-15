@@ -82,12 +82,12 @@ Not yet implemented: This is a feature that is coming down the pipline soon!
 
 To understand how each of the components of the integrator work, there are a series of notebooks located in the `notebooks/functionality` directory of the source code. Specifically, because the implementation makes use of integrator splitting, we have separate logic for:
 
-- Advection
-- Diffusion
-- Integrator Splitting
-- Advection-Diffusion
-- Breathing Harmonic Trap
-- Periodic System
+- Advection (`01-slarge-advection.ipynb`)
+- Diffusion (`02-slarge-diffusion.ipynb`)
+- Integrator Splitting (`03-slarge-operator-splitting.ipynb`)
+- Advection-Diffusion (`04-slarge-advection-diffusion.ipynb`)
+- Breathing Harmonic Trap (`05-slarge-breathing-trap.ipynb`)
+- Periodic System (`06-slarge-periodic-system.ipynb`)
 
 These notebooks go over the raw functionality, as well as go over a few of the model systems investigated in detail in the supporting documentation.
 
