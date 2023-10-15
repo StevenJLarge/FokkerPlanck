@@ -47,7 +47,7 @@ Before delving into more detail on the individual components and their uses, we 
 The code snippet below shows how simple such a procedure is, starting with a system initialized from a uniform distribution an iterating the dynamics for 100 steps
 
 ```python
-from FPE.Simulator import simulator
+from fokker_planck.simulator import simulator
 
 fpe_config = {
     "D": 1.0,
@@ -60,15 +60,17 @@ fpe_config = {
 trap_stringth = 4
 total_time = 1.0
 
-fpe_sim = simulator.HarmonicSimulator(fpe_config, trap_strength)
+fpe_sim = simulator.HarmonicEquilibrationSimulator(fpe_config, trap_strength)
 
 sim_result = fpe_sim.run_simulation(total_time)
 
 ```
 
-The resuly type will bw `SimulationResult` (or some custom subclass of that type) and will contain all of the desired information on the simulation run. Also, this type can obviously be subclassed and expanded to contain any desired information. For instance, in slightly more complex scenario, we can
+The resuly type will bw `SimulationResult` (or some custom subclass of that type) and will contain all of the desired information on the simulation run. Also, this type can obviously be subclassed and expanded to contain any desired information. For instance, in slightly more complex scenario, we can define our own energy and force functions, to simulate the behaviour of whatever systemwe want to simulate.
 
 ## 1D Simulations
+
+As of this point, 1D simulations are all that are supported by the integrator. This means that the current version of the integrator is restricted to model systems of the form:
 
 ## 2D Simulations
 
@@ -77,6 +79,17 @@ Not yet implemented: This is a feature that is coming down the pipline soon!
 ## The _Simulator_ Interface
 
 ## In the Weeds: Intgrator Details and Options
+
+To understand how each of the components of the integrator work, there are a series of notebooks located in the `notebooks/functionality` directory of the source code. Specifically, because the implementation makes use of integrator splitting, we have separate logic for:
+
+- Advection
+- Diffusion
+- Integrator Splitting
+- Advection-Diffusion
+- Breathing Harmonic Trap
+- Periodic System
+
+These notebooks go over the raw functionality, as well as go over a few of the model systems investigated in detail in the supporting documentation.
 
 ## Additional Resources
 
