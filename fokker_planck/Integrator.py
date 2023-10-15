@@ -437,7 +437,7 @@ class FokkerPlanck1D(Integrator):
             half_prob[0] = 0.5 * self.prob[0]
             half_prob[-1] = 0.5 * self.prob[-1]
             half_flux[0] = force_function(self.x_array[0] - 0.5 * self.dx, force_params) * half_prob[0]
-            half_flux[-1] = force_function(self.x_array[0] - 0.5 * self.dx, force_params) * half_prob[-1]
+            half_flux[-1] = force_function(self.x_array[-1] + 0.5 * self.dx, force_params) * half_prob[-1]
 
         return half_flux
 
