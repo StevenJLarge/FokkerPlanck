@@ -88,7 +88,10 @@ target/
 # Mypy cache
 .mypy_cache/
 
+fokker_planck/notebooks/scratch/*.ipynb
+
 # Extras
 fokkerPlanck_archive/
 docs/originalProject/
 figures/*
+fokker_planck/visualizations/*

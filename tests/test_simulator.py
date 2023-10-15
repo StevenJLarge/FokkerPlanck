@@ -2,7 +2,8 @@
 import pytest
 import numpy as np
 from typing import Dict
-from FPE.Simulator.base import VoidSimulator
+from fokker_planck.simulator.base import VoidSimulator
+from fokker_planck.types.basetypes import BoundaryCondition, SplitMethod, DiffScheme
 
 # 2 equivalent sample input_config dictionaries
 config_1 = {
@@ -48,9 +49,9 @@ incorrect_configs = [config_3, config_4, config_5, config_6, config_7]
 sample_valid_config = config_1
 
 additional_specs = [
-    {"boundaryCond": "periodic"},
-    {"splitMethod": "lie"},
-    {"diffScheme": "explicit"}
+    {"boundary_cond": BoundaryCondition.Periodic},
+    {"split_method": SplitMethod.Strang},
+    {"diff_scheme": DiffScheme.Explicit}
 ]
 
 
@@ -88,7 +89,7 @@ def test_pass_additional_specs_passes_through(spec: Dict):
     sim = VoidSimulator(config)
 
     # Act
-    if attr == "boundaryCond":
+    if attr == "boundary_cond":
         obj_attr = getattr(sim.fpe, 'BC')
     else:
         obj_attr = getattr(sim.fpe, attr)

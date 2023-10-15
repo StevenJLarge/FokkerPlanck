@@ -6,9 +6,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import scipy.integrate as si
-from FPE import Integrator
-import FPE.forceFunctions as ff
-import FPE.visualizations.examples as vis
+from fokker_planck import Integrator
+import fokker_planck.forceFunctions as ff
+import fokker_planck.visualizations.examples as vis
 
 from pathlib import Path
 
@@ -37,7 +37,7 @@ class ProbabilityWorkTracker(ProbabilityTracker):
     def update_time(self, time: float):
         self.time_full.append(time)
 
-    def report(self, obj: Integrator.FPE_Integrator_1D) -> Tuple[Iterable]:
+    def report(self, obj: Integrator.FokkerPlank1D) -> Tuple[Iterable]:
         # NOTE Need to propagate time_full through the logic here
         return obj.workTracker, obj.powerTracker, self.time_full, *super().report()
 
@@ -60,8 +60,8 @@ def calcDiffusion(BC: Optional[str] = "hard-wall") -> ProbabilityTracker:
     D = 1.0
     xArray = np.arange(-1.5, 1.5, dx)
 
-    obj = Integrator.FPE_Integrator_1D(D, dt, dx, xArray, boundaryCond=BC)
-    obj.initializeProbability(0, 0.125)
+    obj = Integrator.FokkerPlank1D(D, dt, dx, xArray, boundary_cond=BC)
+    obj.initialize_probability(0, 0.125)
 
     elapsed_time = 0.0
     counter = 0
@@ -70,7 +70,7 @@ def calcDiffusion(BC: Optional[str] = "hard-wall") -> ProbabilityTracker:
 
     while elapsed_time <= 1.0:
         # obj.integrate_step((0,), ff.noForce)
-        obj.diffusionUpdate()
+        obj.diffusion_update()
         if counter % 5 == 0:
             probRes.update(obj.get_prob, elapsed_time)
 
@@ -87,8 +87,8 @@ def calcAdvection(BC: Optional[str] = "periodic") -> ProbabilityTracker:
     kVal = 1.0
 
     xArray = np.arange(-1.5, 1.5, dx)
-    obj = Integrator.FPE_Integrator_1D(D, dt, dx, xArray, boundaryCond=BC)
-    obj.initializeProbability(0, 0.125)
+    obj = Integrator.FokkerPlank1D(D, dt, dx, xArray, boundary_cond=BC)
+    obj.initialize_probability(0, 0.125)
 
     elapsed_time = 0.0
     counter = 0
@@ -96,7 +96,7 @@ def calcAdvection(BC: Optional[str] = "periodic") -> ProbabilityTracker:
     probRes = ProbabilityTracker(xArray, obj.get_prob, elapsed_time)
 
     while elapsed_time <= 2.0:
-        obj.advectionUpdate([kVal], ff.constantForce, dt)
+        obj.advection_update([kVal], ff.constant_force, dt)
         if counter % 25 == 0:
             probRes.update(obj.get_prob, elapsed_time)
         elapsed_time += dt
@@ -115,8 +115,8 @@ def calcHarmonicRelaxation(
     trap_center = 0.5
 
     xArray = np.arange(-2.0, 2.0, dx)
-    obj = Integrator.FPE_Integrator_1D(D, dt, dx, xArray, boundaryCond=BC)
-    obj.initializeProbability(-0.5, 0.125)
+    obj = Integrator.FokkerPlank1D(D, dt, dx, xArray, boundary_cond=BC)
+    obj.initialize_probability(-0.5, 0.125)
 
     elapsed_time = 0.0
     counter = 0
@@ -124,7 +124,7 @@ def calcHarmonicRelaxation(
     probRes = ProbabilityTracker(xArray, obj.get_prob, elapsed_time)
 
     while elapsed_time <= 1.0:
-        obj.integrate_step([k_trap, trap_center], ff.harmonicForce)
+        obj.integrate_step([k_trap, trap_center], ff.harmonic_force)
         if counter % 25 == 0:
             probRes.update(obj.get_prob, elapsed_time)
         counter += 1
@@ -147,9 +147,9 @@ def calcHarmonicConstVel(
     force_params_fwd = [k_trap, trap_velocity, D, beta, 0.5 * trap_velocity * dt]
 
     xArray = np.arange(-2.0, 2.0, dx)
-    obj = Integrator.FPE_Integrator_1D(D, dt, dx, xArray, boundaryCond=BC)
+    obj = Integrator.FokkerPlank1D(D, dt, dx, xArray, boundary_cond=BC)
     # Initialize system to Eq dist for zero-velocity
-    obj.initializeProbability(0.0, 0.25)
+    obj.initialize_probability(0.0, 0.25)
 
     elapsed_time = 0.0
     counter = 0
@@ -158,7 +158,7 @@ def calcHarmonicConstVel(
 
     while elapsed_time <= 1.0:
         # obj.integrate_step(force_parameters, ff.harmonicForce_constVel)
-        obj.work_step(force_parameters, force_params_fwd, ff.harmonicForce_constVel, ff.harmonicEnergy_constVel)
+        obj.work_step(force_parameters, force_params_fwd, ff.harmonic_force_const_velocity, ff.harmonic_energy_const_velocity)
         if counter % 25 == 0:
             probRes.update(obj.get_prob, elapsed_time)
 

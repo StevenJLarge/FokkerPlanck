@@ -15,22 +15,23 @@ Software:       python 3.x
 '''
 from typing import Callable, Optional, Tuple
 import numpy as np
-from FPE.base import BaseIntegrator
+from fokker_planck.base import Integrator
+from fokker_planck.types.basetypes import (
+    DiffScheme, BoundaryCondition, SplitMethod
+)
 
 
-class FPE_Integrator_1D(BaseIntegrator):
+class FokkerPlanck1D(Integrator):
     """1-dimensional Fokker-Planck integrator class, inherits from
     BaseIntegrator class
     """
-
     def __init__(
-        self, D: float, dt: float, dx: float, xArray: np.ndarray,
-        diffScheme: Optional[str] = 'crank-nicolson',
-        adScheme: Optional[str] = 'lax-wendroff',
-        boundaryCond: Optional[str] = 'hard-wall',
-        splitMethod: Optional[str] = 'strang',
-        output: Optional[bool] = False,
-        constDiff: Optional[bool] = True
+        self, D: float, dt: float, dx: float, x_array: np.ndarray,
+        diff_scheme: DiffScheme = DiffScheme.CrankNicolson,
+        boundary_cond: BoundaryCondition = BoundaryCondition.HardWall,
+        split_method: SplitMethod = SplitMethod.Strang,
+        output: bool = False,
+        const_diffusion: bool = True
     ):
         """Constructor for 1-dimensional integrator object.
 
@@ -39,7 +40,7 @@ class FPE_Integrator_1D(BaseIntegrator):
             dt (float): Discrete time step size
             dx (float): Discrete spatial step size
             xArray (np.ndarray): Numpy array representing the discrete x-values
-                of the system domain. 
+                of the system domain.
             diffScheme (Optional[str], optional): Diffusion scheme used for
                 integration. Defaults to 'crank-nicolson'.
             adScheme (Optional[str], optional): Advection scheme used for
@@ -55,16 +56,16 @@ class FPE_Integrator_1D(BaseIntegrator):
                 Defaults to True.
         """
         super().__init__(
-            D, dt, diffScheme, adScheme, boundaryCond, splitMethod, output,
-            constDiff
+            D, dt, diff_scheme, boundary_cond, split_method, output,
+            const_diffusion
         )
         self.dx = dx
 
-        self.N = len(xArray)
+        self.N = len(x_array)
         self.prob = np.ones(self.N) / (self.N * self.dx)
-        self.xArray = xArray
+        self.x_array = x_array
 
-        self.initDiffusionMatrix()
+        self.init_diffusion_matrix()
 
     @property
     def dimension(self) -> int:
@@ -72,11 +73,11 @@ class FPE_Integrator_1D(BaseIntegrator):
 
     @property
     def mean(self) -> float:
-        return np.sum(self.prob * self.xArray * self.dx)
+        return np.sum(self.prob * self.x_array * self.dx)
 
     @property
     def variance(self) -> float:
-        return np.sum(((self.xArray - self.mean) ** 2) * self.prob * self.dx)
+        return np.sum(((self.x_array - self.mean) ** 2) * self.prob * self.dx)
 
     def reset(
         self, variance: Optional[float] = None, mean: Optional[float] = None
@@ -93,12 +94,12 @@ class FPE_Integrator_1D(BaseIntegrator):
                 distribution. Defaults to None.
         """
         if variance is not None and mean is not None:
-            self.initializeProbability(mean, variance)
+            self.initialize_probability(mean, variance)
         else:
             self.prob = np.ones(self.N) / (self.N * self.dx)
-        self.initializePhysicalTrackers()
+        self.init_physical_trackers()
 
-    def initializePhysicalTrackers(self):
+    def init_physical_trackers(self):
         """Routine to (re)initialize physical quantity trackers.
         """
         # Work and power tracking arrays
@@ -107,21 +108,21 @@ class FPE_Integrator_1D(BaseIntegrator):
         self.powerTracker = []
         self.timeTracker = []
 
-        self.flux = np.zeros(len(self.xArray))
+        self.flux = np.zeros(len(self.x_array))
         # Total (integrated) flux tracker
         self.fluxTracker = 0
 
-    def initializeProbability(self, mean: float, var: float):
+    def initialize_probability(self, mean: float, var: float):
         """Initialize 1-D Gaussian probability density
 
         Args:
             mean (float): mean of distribution
             var (float): variance of distribution
         """
-        self.prob = np.exp(-(0.5 / var) * ((self.xArray - mean)**2))
+        self.prob = np.exp(-(0.5 / var) * ((self.x_array - mean)**2))
         self.prob = self.prob / (sum(self.prob) * self.dx)
 
-    def initializeUserProbability(
+    def initialize_user_probability(
         self, func: Callable, params: Optional[Tuple] = None
     ):
         """Initlialize a user-provided probability density, based on input
@@ -133,59 +134,81 @@ class FPE_Integrator_1D(BaseIntegrator):
             params (Optional[Tuple], optional): Tuple of parameters for the
                 input probability function. Defaults to None.
         """
-        self.prob = func(self.xArray, *params)
+        self.prob = func(self.x_array, *params)
         self.prob = self.prob / (sum(self.prob) * self.dx)
 
-    def initDiffusionMatrix(self):
+    def check_CFL(self, force_params: Tuple, force_function: Callable) -> bool:
+        """Routine to check whether or not Courant-Friedrichs-Lewy (CFL)
+        criterion is satisfied for dynamics, given input force
+
+        Args:
+            forceParams (Tuple): Tuple representing the current force parameters
+            forceFunction (Callable): The function taking arguments of the form
+                (x, *args) that gives the force on the system as function of
+                its position
+
+        Returns:
+            bool: Flag as to whether or not the force function, parameters, and
+                discretization evel satisfy the CFL
+        """
+        max_force = np.max(np.abs(force_function(self.x_array, force_params)))
+
+        # set CFL and check if it is less than or greater than Unity
+        self.CFL = max_force * self.dt / self.dx
+        if (self.CFL > 1):
+            if self.output:
+                print("\t\tStability warning, invalid CFL --> " + str(self.CFL) + "\n\n")
+            return False
+
+        if self.output:
+            print("\t\tCFL criterion satisfied, CFL --> " + str(self.CFL) + "\n\n")
+        return True
+
+    def init_diffusion_matrix(self):
         """Routine to initialize the A and B diffusion matrices for diffusion
         integration
         """
-        if(self.output):
-            print("\n\nInitializing diffusion term integration matrix...\n")
         # Set parameters for diffusion matrix iteration
         self._setDiffusionScheme()
-
-        if(self.output):
-            print("\t\tInitializing integration matrices for diffusion\n")
 
         alpha = self.D * self.dt / (self.dx * self.dx)
 
         self.AMat = (
-            np.diag(1 + 2 * alpha * self.expImp * np.ones(self.N))
-            - np.diag(alpha * self.expImp * np.ones(self.N - 1), k=1)
-            - np.diag(alpha * self.expImp * np.ones(self.N - 1), k=-1)
+            np.diag(1 + 2 * alpha * self.exp_imp * np.ones(self.N))
+            - np.diag(alpha * self.exp_imp * np.ones(self.N - 1), k=1)
+            - np.diag(alpha * self.exp_imp * np.ones(self.N - 1), k=-1)
         )
 
         self.BMat = (
-            np.diag(1 - 2 * alpha * (1 - self.expImp) * np.ones(self.N))
-            + alpha * np.diag((1 - self.expImp) * np.ones(self.N - 1), k=1)
-            + alpha * np.diag((1 - self.expImp) * np.ones(self.N - 1), k=-1)
+            np.diag(1 - 2 * alpha * (1 - self.exp_imp) * np.ones(self.N))
+            + alpha * np.diag((1 - self.exp_imp) * np.ones(self.N - 1), k=1)
+            + alpha * np.diag((1 - self.exp_imp) * np.ones(self.N - 1), k=-1)
         )
 
         # Initialize boundary columns based on self.BC
-        self._initializeBoundaryTerms(alpha)
+        self._initialize_boundary_terms(alpha)
 
         self.CMat = np.matmul(np.linalg.inv(self.AMat), self.BMat)
 
         # Test if sparse-matrix iteration steps are faster than normal matrix
         # multiplication
-        self.testSparse()
+        self.test_sparse()
 
-    def _initializeBoundaryTerms(self, alpha: float):
+    def _initialize_boundary_terms(self, alpha: float):
         """Initialize boundary terms for diffusion matrices
 
         Args:
             alpha (float): _description_
         """
         # Left-side boundary
-        self._matrixBoundary_A(alpha, 0)
-        self._matrixBoundary_B(alpha, 0)
+        self._matrix_boundary_A(alpha, 0)
+        self._matrix_boundary_B(alpha, 0)
 
         # Right-side boundary
-        self._matrixBoundary_A(alpha, self.N - 1)
-        self._matrixBoundary_B(alpha, self.N - 1)
+        self._matrix_boundary_A(alpha, self.N - 1)
+        self._matrix_boundary_B(alpha, self.N - 1)
 
-    def _matrixBoundary_A(self, alpha: float, idx: int):
+    def _matrix_boundary_A(self, alpha: float, idx: int):
         """Routine to set boudary-related terms in the diffusion matrix
 
         Args:
@@ -196,16 +219,15 @@ class FPE_Integrator_1D(BaseIntegrator):
         Raises:
             ValueError: raised when self.BC parameter is invalid / not supported
         """
-        if self.BC == 'periodic':
-            self.AMat[idx, (idx + 1) % self.N] = -self.expImp * alpha
-            self.AMat[idx, (idx - 1) % self.N] = -self.expImp * alpha
+        if self.BC == BoundaryCondition.Periodic:
+            self.AMat[idx, (idx + 1) % self.N] = -self.exp_imp * alpha
+            self.AMat[idx, (idx - 1) % self.N] = -self.exp_imp * alpha
 
-        # NOTE double check this boundary resolution..
-        elif self.BC == 'hard-wall':
+        elif self.BC == BoundaryCondition.HardWall:
             self.AMat[idx, idx] = 1 + 2 * alpha
             self.AMat[idx, abs(idx - 1)] = -2 * alpha
 
-        elif self.BC == "open":
+        elif self.BC == BoundaryCondition.Open:
             pass
 
         else:
@@ -214,7 +236,7 @@ class FPE_Integrator_1D(BaseIntegrator):
                 "diffusion matrix A"
             )
 
-    def _matrixBoundary_B(self, alpha: float, idx: int):
+    def _matrix_boundary_B(self, alpha: float, idx: int):
         """Determines / sets the parameters of matrix B on the boundaries
 
         Args:
@@ -225,16 +247,16 @@ class FPE_Integrator_1D(BaseIntegrator):
         Raises:
             ValueError: raised when self.BC parameter is invalid / not supported
         """
-        if self.BC == 'periodic':
-            self.BMat[idx, (idx + 1) % self.N] = alpha * (1 - self.expImp)
-            self.BMat[idx, (idx - 1) % self.N] = alpha * (1 - self.expImp)
+        if self.BC == BoundaryCondition.Periodic:
+            self.BMat[idx, (idx + 1) % self.N] = alpha * (1 - self.exp_imp)
+            self.BMat[idx, (idx - 1) % self.N] = alpha * (1 - self.exp_imp)
 
         # NOTE double check this boundary resolution..
-        elif self.BC == 'hard-wall':
+        elif self.BC == BoundaryCondition.HardWall:
             self.BMat[idx, idx] = 1
             self.BMat[idx, abs(idx - 1)] = 0
 
-        elif self.BC == "open":
+        elif self.BC == BoundaryCondition.Open:
             pass
 
         else:
@@ -244,8 +266,8 @@ class FPE_Integrator_1D(BaseIntegrator):
             )
 
     def work_step(
-        self, forceParams_pre: Tuple, forceParams_post: Tuple,
-        forceFunction: Callable, energyFunction: Callable
+        self, force_params_pre: Tuple, force_params_post: Tuple,
+        force_function: Callable, energy_function: Callable
     ):
         """Wrapper routine for integration step to calculate the work done due
         to changes in force function parameters. In this scheme, we effectively
@@ -267,23 +289,23 @@ class FPE_Integrator_1D(BaseIntegrator):
 
         # Calculate average energy before and after update to force parameters
         currEnergy = (
-            sum(energyFunction(self.xArray, forceParams_pre) * self.prob) * self.dx
+            sum(energy_function(self.x_array, force_params_pre) * self.prob) * self.dx
         )
         newEnergy = (
-            sum(energyFunction(self.xArray, forceParams_post) * self.prob) * self.dx
+            sum(energy_function(self.x_array, force_params_post) * self.prob) * self.dx
         )
 
-        self.integrate_step(forceParams_post, forceFunction)
+        self.integrate_step(force_params_post, force_function)
 
         # Work done per step is given by the change in average energy through
         # force function update
-        self.workAccumulator += newEnergy - currEnergy
-        self.workTracker.append(self.workAccumulator)
+        self.work_accumulator += newEnergy - currEnergy
+        self.work_tracker.append(self.work_accumulator)
         # Power is the change in work, divided by the time over which the change
         # occurred (which is dt here)
-        self.powerTracker.append((newEnergy - currEnergy) / self.dt)
+        self.power_tracker.append((newEnergy - currEnergy) / self.dt)
 
-    def flux_step(self, forceParams: Tuple, forceFunction: Callable):
+    def flux_step(self, force_params: Tuple, force_function: Callable):
         """Similar to work_step(...) this routine wraps the integrate_step in
         the parent class with calcualtions for the probability flux. Here
         the flux J is defined in the alternate version of the FPE:
@@ -301,15 +323,15 @@ class FPE_Integrator_1D(BaseIntegrator):
         """
         # flux as a function of position
         self.flux = (
-            self.D * forceFunction(self.xArray, forceParams) * self.prob
+            self.D * force_function(self.x_array, force_params) * self.prob
             - self.D * np.gradient(self.prob)
         )
         # Calculate integrated (net) flux over current configuration
-        self.fluxTracker = sum(self.flux) * self.dx
-        self.integrate_step(forceParams, forceFunction)
+        self.flux_tracker = sum(self.flux) * self.dx
+        self.integrate_step(force_params, force_function)
 
-    def laxWendroff(
-        self, forceParams: Tuple, forceFunction: Callable, deltaT: float
+    def lax_wendroff(
+        self, force_params: Tuple, force_function: Callable, delta_t: float
     ):
         """Implementation of lax-wendroff method for 1-D system
 
@@ -325,23 +347,23 @@ class FPE_Integrator_1D(BaseIntegrator):
         new_prob = np.zeros(len(self.prob))
 
         # Get half-time-step flux terms
-        halfFlux = self._calcFlux_laxWendroff(
-            forceParams, forceFunction, deltaT
+        halfFlux = self._calc_flux_lax_wendroff(
+            force_params, force_function, delta_t
         )
 
         # Update probability with Lax-step using half-time-step flux terms
         for index in range(len(self.prob)):
             new_prob[index] = (
                 self.prob[index]
-                - (self.D * deltaT / self.dx)
+                - (self.D * delta_t / self.dx)
                 * (halfFlux[index+1] - halfFlux[index])
             )
 
         # set probability to be update prob
         self.prob = new_prob
 
-    def _calcFlux_laxWendroff(
-        self, forceParams: Tuple, forceFunction: Callable, deltaT: float
+    def _calc_flux_lax_wendroff(
+        self, force_params: Tuple, force_function: Callable, delta_t: float
     ) -> np.ndarray:
         """Routine to calculate the half-time-step flux terms for the
         lax-wendroff advection update scheme
@@ -368,59 +390,59 @@ class FPE_Integrator_1D(BaseIntegrator):
 
             half_prob[i + 1] = (
                 0.5 * (self.prob[i + 1] + self.prob[i])
-                - self._getFluxDiff_LaxWendroff(forceFunction, forceParams, deltaT, i)
+                - self._get_flux_diff_lax_wendroff(force_function, force_params, delta_t, i)
             )
             half_flux[i + 1] = (
-                forceFunction(self.xArray[i] + 0.5 * self.dx, forceParams) * half_prob[i + 1]
+                force_function(self.x_array[i] + 0.5 * self.dx, force_params) * half_prob[i + 1]
             )
 
         # Boundary terms
-        if self.BC == 'periodic':
+        if self.BC == BoundaryCondition.Periodic:
             half_prob[0] = (
                 0.5 * (self.prob[0] + self.prob[-1])
-                - self._getFluxDiff_LaxWendroff(
-                    forceFunction, forceParams, deltaT, len(self.prob) - 1
+                - self._get_flux_diff_lax_wendroff(
+                    force_function, force_params, delta_t, len(self.prob) - 1
                 )
             )
 
             half_prob[-1] = (
                 0.5 * (self.prob[-1] + self.prob[0])
-                - self._getFluxDiff_LaxWendroff(forceFunction, forceParams, deltaT, 0)
+                - self._get_flux_diff_lax_wendroff(force_function, force_params, delta_t, 0)
             )
  
             half_flux[0] = (
-                forceFunction(self.xArray[0] - 0.5 * self.dx, forceParams) * half_prob[0]
+                force_function(self.x_array[0] - 0.5 * self.dx, force_params) * half_prob[0]
             )
             half_flux[-1] = half_flux[0]
 
-        elif self.BC == "open":
+        elif self.BC == BoundaryCondition.Open:
 
             fluxFw = (
-                (self.D * deltaT / (2 * self.dx))
-                * forceFunction(self.xArray[0], forceParams)
+                (self.D * delta_t / (2 * self.dx))
+                * force_function(self.x_array[0], force_params)
                 * self.prob[0]
             )
             fluxRev = (
-                (self.D * deltaT / (2 * self.dx))
-                * forceFunction(self.xArray[-1], forceParams)
+                (self.D * delta_t / (2 * self.dx))
+                * force_function(self.x_array[-1], force_params)
                 * self.prob[-1]
             )
             half_prob[0] = 0.5 * self.prob[0] - fluxFw
             half_prob[-1] = 0.5 * self.prob[-1] + fluxRev
-            half_flux[0] = forceFunction(self.xArray[0] - 0.5 * self.dx, forceParams) * half_prob[0]
-            half_flux[-1] = forceFunction(self.xArray[-1] + 0.5 * self.dx, forceParams) * half_prob[-1]
+            half_flux[0] = force_function(self.x_array[0] - 0.5 * self.dx, force_params) * half_prob[0]
+            half_flux[-1] = force_function(self.x_array[-1] + 0.5 * self.dx, force_params) * half_prob[-1]
 
         else:
             # Hard wall boundaries
             half_prob[0] = 0.5 * self.prob[0]
             half_prob[-1] = 0.5 * self.prob[-1]
-            half_flux[0] = forceFunction(self.xArray[0] - 0.5 * self.dx, forceParams) * half_prob[0]
-            half_flux[-1] = forceFunction(self.xArray[0] - 0.5 * self.dx, forceParams) * half_prob[-1]
+            half_flux[0] = force_function(self.x_array[0] - 0.5 * self.dx, force_params) * half_prob[0]
+            half_flux[-1] = force_function(self.x_array[-1] + 0.5 * self.dx, force_params) * half_prob[-1]
 
         return half_flux
 
-    def _getFluxDiff_LaxWendroff(
-        self, forceFunction: Callable, forceParams: Tuple, deltaT: float,
+    def _get_flux_diff_lax_wendroff(
+        self, force_function: Callable, force_params: Tuple, delta_t: float,
         idx: int
     ) -> float:
         """Calculate the difference between forward and reverse flux terms at
@@ -440,13 +462,13 @@ class FPE_Integrator_1D(BaseIntegrator):
                 discretization
         """
         fluxFw = (
-            (self.D * deltaT / (2 * self.dx))
-            * forceFunction(self.xArray[(idx + 1) % len(self.xArray)], forceParams)
-            * self.prob[(idx + 1) % len(self.xArray)]
+            (self.D * delta_t / (2 * self.dx))
+            * force_function(self.x_array[(idx + 1) % len(self.x_array)], force_params)
+            * self.prob[(idx + 1) % len(self.x_array)]
         )
         fluxRev = (
-            (self.D * deltaT / (2 * self.dx))
-            * forceFunction(self.xArray[idx], forceParams)
+            (self.D * delta_t / (2 * self.dx))
+            * force_function(self.x_array[idx], force_params)
             * self.prob[idx]
         )
 
@@ -458,6 +480,6 @@ if __name__ == "__main__":
     dx = 0.01
     dt = 0.01
     x_array = np.arange(-1, 1, dx)
-    fpe = FPE_Integrator_1D(D, dt, dx, x_array)
+    fpe = FokkerPlanck1D(D, dt, dx, x_array)
 
     print("-- DONE --")

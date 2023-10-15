@@ -1,12 +1,13 @@
 import pytest
 import numpy as np
-from FPE import Integrator
-from FPE import config
+from fokker_planck.integrator import FokkerPlanck1D
+from fokker_planck.types.basetypes import DiffScheme, BoundaryCondition
 import statsmodels.api as sm
 
 diffusion_coeffs = [1, 2, 4]
-integrator_schemes = config.diffSchemes
-boundary_conditions = config.boundaryConditions
+integrator_schemes = DiffScheme._member_map_.values()
+boundary_conditions = BoundaryCondition._member_map_.values()
+
 
 D = 1.0
 dt = 0.01
@@ -19,12 +20,12 @@ init_var = 1 / 128
 # Check correct instantiation of constDiff parameter
 def test_constDiff_parameter_initialized_correctly():
     # Arrange / Act
-    fpe_cd = Integrator.FPE_Integrator_1D(D, dt, dx, x_array, constDiff=True)
-    fpe_no_cd = Integrator.FPE_Integrator_1D(D, dt, dx, x_array, constDiff=False)
+    fpe_cd = FokkerPlanck1D(D, dt, dx, x_array, const_diffusion=True)
+    fpe_no_cd = FokkerPlanck1D(D, dt, dx, x_array, const_diffusion=False)
 
     # Assert
-    assert fpe_cd.constDiff is True
-    assert fpe_no_cd.constDiff is False
+    assert fpe_cd.const_diffusion is True
+    assert fpe_no_cd.const_diffusion is False
 
 
 # Test normalization preservation
@@ -32,14 +33,14 @@ def test_constDiff_parameter_initialized_correctly():
 def test_normalization_preservation(BC):
     # Arrange
     n_steps = 10
-    fpe = Integrator.FPE_Integrator_1D(D, dt, dx, x_array, boundaryCond=BC)
-    fpe.initializeProbability(0, init_var)
+    fpe = FokkerPlanck1D(D, dt, dx, x_array, boundary_cond=BC)
+    fpe.initialize_probability(0, init_var)
 
     # Act
     init_norm = np.sum(fpe.get_prob * dx)
 
     for _ in range(n_steps):
-        fpe.diffusionUpdate()
+        fpe.diffusion_update()
 
     final_norm = np.sum(fpe.get_prob * dx)
     # Assert
@@ -51,16 +52,16 @@ def test_normalization_preservation(BC):
 @pytest.mark.parametrize('scheme', integrator_schemes)
 def test_initialization_of_explicit_implicit_schemes(scheme):
     # Arrange / Act
-    fpe = Integrator.FPE_Integrator_1D(D, dt, dx, x_array, diffScheme=scheme)
+    fpe = FokkerPlanck1D(D, dt, dx, x_array, diff_scheme=scheme)
 
     # Assert
-    assert fpe.diffScheme == scheme
+    assert fpe.diff_scheme == scheme
 
 
 def test_default_diffusion_scheme_initialization():
     # Arrange / Act / Assert
     with pytest.raises(ValueError):
-        _ = Integrator.FPE_Integrator_1D(D, dt, dx, x_array, diffScheme="UNSUPPORTED")
+        _ = FokkerPlanck1D(D, dt, dx, x_array, diff_scheme="UNSUPPORTED")
 
 
 # Test Diffusion relation
@@ -78,17 +79,17 @@ def test_diffusion_relation(D):
     n_steps = int((total_time / dt) / (2 * D))
     error_tolerance = 0.1
     time = 0
-    fpe = Integrator.FPE_Integrator_1D(D, dt, dx, x_array_large, boundaryCond="open")
-    fpe.initializeProbability(0, init_var)
-    var_tracker = [variance(fpe.get_prob, fpe.xArray)]
+    fpe = FokkerPlanck1D(D, dt, dx, x_array_large, boundary_cond=BoundaryCondition.Open)
+    fpe.initialize_probability(0, init_var)
+    var_tracker = [variance(fpe.get_prob, fpe.x_array)]
     time_tracker = [time]
     theory_slope = 2 * D
 
     # Act
     for _ in range(n_steps):
         time += dt
-        fpe.diffusionUpdate()
-        var_tracker.append(variance(fpe.prob, fpe.xArray))
+        fpe.diffusion_update()
+        var_tracker.append(variance(fpe.prob, fpe.x_array))
         time_tracker.append(time)
 
     Y = np.array(var_tracker) + init_var
