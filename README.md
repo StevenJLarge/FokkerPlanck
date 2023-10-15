@@ -36,7 +36,7 @@ Simply put, this software package deals with the Fokker-Planck equation. This eq
 
 However, in full generality the FPE representing this type of evolution can be represented in $N$-spatial dimensions as
 
-$$ \partial*t p(\boldsymbol{x}, t) = \sum_i \partial*{\boldsymbol{x*i}} \left[\mu(\boldsymbol{x}, t) p(\boldsymbol{x}, t)\right] + \sum*{i, j}\partial*{x_i, x_j}^2D*{ij}p(\boldsymbol{x}, t) $$
+$$ \partial_t p(\boldsymbol{x}, t) = \sum_i \partial_{{x_i}} \left[\mu(\boldsymbol{x}, t) p(x, t)\right] + \sum_{i, j}\partial_{x_i, x_j}^2D_{ij}p(\boldsymbol{x}, t) $$
 
 which is rather complicated, but essentially allows for arbitrary mobilities $\mu$ as a function of the state vector $\boldsymbol{x}$
 
