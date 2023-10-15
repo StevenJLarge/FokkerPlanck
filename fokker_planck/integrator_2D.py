@@ -3,11 +3,11 @@ import numpy as np
 import scipy
 import scipy.sparse as sp
 from scipy.sparse.linalg import inv
-from FPE.base import BaseIntegrator
+from fokker_planck.base import Integrator
 
 
 # ANCHOR 2D Integrator
-class FPE_integrator_2D(BaseIntegrator):
+class FPE_integrator_2D(Integrator):
 
     def __init__(
         self, D: float, dt: float, dx: float, dy: float, xArray: float,
@@ -38,7 +38,7 @@ class FPE_integrator_2D(BaseIntegrator):
         self.constDiff = constDiff
         self.sparTest = False
 
-        self.initDiffusionMatrix()
+        self.init_diffusion_matrix()
 
     @property
     def dimension(self) -> int:
@@ -70,9 +70,9 @@ class FPE_integrator_2D(BaseIntegrator):
             self.initializeProbability(mean, covariance)
         else:
             self.prob = np.ones((self.Nx, self.Ny)) / (self.Nx * self.Ny * self.dx * self.dy)
-        self.initializePhysicalTrackers()
+        self.init_physical_trackers()
 
-    def initializePhysicalTrackers(self):
+    def init_physical_trackers(self):
         self.workAccumulator = 0
         self.workTracker = []
         self.powerTracker = []
@@ -91,7 +91,7 @@ class FPE_integrator_2D(BaseIntegrator):
     ):
         pass
 
-    def initDiffusionMatrix(self):
+    def init_diffusion_matrix(self):
         if(self.output is True):
             print("\n\nInitializing diffusion term integration matrix...\n")
 
@@ -106,17 +106,17 @@ class FPE_integrator_2D(BaseIntegrator):
         self.BMat = sp.lil_matrix((self.N, self.N))
 
         # Bulk term initializations
-        self.AMat.setdiag(1 + 4 * alpha * self.expImp)
-        self.AMat.setdiag(-1 * self.expImp * alpha, k=1)
-        self.AMat.setdiag(-1 * self.expImp * alpha, k=-1)
-        self.AMat.setdiag(-1 * self.expImp * alpha, k=self.Nx)
-        self.AMat.setdiag(-1 * self.expImp * alpha, k=-self.Nx)
+        self.AMat.setdiag(1 + 4 * alpha * self.exp_imp)
+        self.AMat.setdiag(-1 * self.exp_imp * alpha, k=1)
+        self.AMat.setdiag(-1 * self.exp_imp * alpha, k=-1)
+        self.AMat.setdiag(-1 * self.exp_imp * alpha, k=self.Nx)
+        self.AMat.setdiag(-1 * self.exp_imp * alpha, k=-self.Nx)
 
-        self.BMat.setdiag(1 - 4 * alpha * (1 - self.expImp))
-        self.BMat.setdiag(alpha * (1 - self.expImp), k=1)
-        self.BMat.setdiag(alpha * (1 - self.expImp), k=-1)
-        self.BMat.setdiag(alpha * (1 - self.expImp), k=self.Nx)
-        self.BMat.setdiag(alpha * (1 - self.expImp), k=-self.Nx)
+        self.BMat.setdiag(1 - 4 * alpha * (1 - self.exp_imp))
+        self.BMat.setdiag(alpha * (1 - self.exp_imp), k=1)
+        self.BMat.setdiag(alpha * (1 - self.exp_imp), k=-1)
+        self.BMat.setdiag(alpha * (1 - self.exp_imp), k=self.Nx)
+        self.BMat.setdiag(alpha * (1 - self.exp_imp), k=-self.Nx)
 
         self._initializeBoundaryTerms(alpha)
 
@@ -144,16 +144,16 @@ class FPE_integrator_2D(BaseIntegrator):
                 y_idx_fw = (idx + 1) % self.Nx + self.Nx * image
                 y_idx_rv = (idx - 1) % self.Nx + self.Nx * image
 
-                self.AMat[x_idx, y_idx_fw] = -self.expImp * alpha
-                self.AMat[x_idx, y_idx_rv] = -self.expImp * alpha
+                self.AMat[x_idx, y_idx_fw] = -self.exp_imp * alpha
+                self.AMat[x_idx, y_idx_rv] = -self.exp_imp * alpha
 
             for image in range(1, self.Ny):
                 self.AMat[image * self.Nx - 1, image * self.Nx] = 0
                 self.AMat[image * self.Nx, image * self.Nx - 1] = 0
 
             # y-dimension BCs
-            self.AMat.setdiag(-self.expImp * alpha, k=self.N - self.Nx)
-            self.AMat.setdiag(-self.expImp * alpha, k=-(self.N - self.Nx))
+            self.AMat.setdiag(-self.exp_imp * alpha, k=self.N - self.Nx)
+            self.AMat.setdiag(-self.exp_imp * alpha, k=-(self.N - self.Nx))
 
         elif self.BC == "hard-wall":
             # This resolves the HW conditions in the X-dimension, still need
@@ -244,16 +244,16 @@ class FPE_integrator_2D(BaseIntegrator):
                 y_idx_fw = (idx + 1) % self.Nx + self.Nx * image
                 y_idx_rv = (idx - 1) % self.Nx + self.Nx * image
 
-                self.BMat[x_idx, y_idx_fw] = alpha * (1 - self.expImp)
-                self.BMat[x_idx, y_idx_rv] = alpha * (1 - self.expImp)
+                self.BMat[x_idx, y_idx_fw] = alpha * (1 - self.exp_imp)
+                self.BMat[x_idx, y_idx_rv] = alpha * (1 - self.exp_imp)
 
             for image in range(1, self.Ny):
                 self.BMat[image * self.Nx - 1, image * self.Nx] = 0
                 self.BMat[image * self.Nx, image * self.Nx - 1] = 0
 
             # y-dimension BCs
-            self.BMat.setdiag(alpha * (1 - self.expImp), k=self.N - self.Nx)
-            self.BMat.setdiag(alpha * (1 - self.expImp), k=-(self.N - self.Nx))
+            self.BMat.setdiag(alpha * (1 - self.exp_imp), k=self.N - self.Nx)
+            self.BMat.setdiag(alpha * (1 - self.exp_imp), k=-(self.N - self.Nx))
 
         elif self.BC == "hard-wall":
             # for image in range(0, self.Ny):
@@ -352,31 +352,31 @@ class FPE_integrator_2D(BaseIntegrator):
         self, forceParams: Tuple, forceFunction_x: Callable,
         forceFunction_y: Callable
     ):
-        if(self.splitMethod == 'lie'):
-            self.advectionUpdate(
+        if(self.split_method == 'lie'):
+            self.advection_update(
                 forceParams, forceFunction_x, forceFunction_y, self.dt
             )
-            self.diffusionUpdate()
+            self.diffusion_update()
 
-        elif(self.splitMethod == 'strang'):
-            self.advectionUpdate(
+        elif(self.split_method == 'strang'):
+            self.advection_update(
                 forceParams, forceFunction_x, forceFunction_y, 0.5 * self.dt
             )
-            self.diffusionUpdate()
-            self.advectionUpdate(
+            self.diffusion_update()
+            self.advection_update(
                 forceParams, forceFunction_x, forceFunction_y, 0.5 * self.dt
             )
 
-        elif(self.splitMethod == 'swss'):
+        elif(self.split_method == 'swss'):
             initProb = self.prob
-            self.advectionUpdate(
+            self.advection_update(
                 forceParams, forceFunction_x, forceFunction_y, self.dt
             )
-            self.diffusionUpdate()
+            self.diffusion_update()
             prob_1 = self.prob
             self.prob = initProb
-            self.diffusionUpdate()
-            self.advectionUpdate(
+            self.diffusion_update()
+            self.advection_update(
                 forceParams, forceFunction_x, forceFunction_y, self.dt
             )
             prob_2 = self.prob
@@ -384,16 +384,16 @@ class FPE_integrator_2D(BaseIntegrator):
 
         else:
             # Symmetric Strang splitting is the default choice
-            self.advectionUpdate(
+            self.advection_update(
                 forceParams, forceFunction_x, forceFunction_y, 0.5 * self.dt
             )
-            self.diffusionUpdate()
-            self.advectionUpdate(
+            self.diffusion_update()
+            self.advection_update(
                 forceParams, forceFunction_x, forceFunction_y, 0.5 * self.dt
             )
 
     # TODO Keep this in the base class
-    def diffusionUpdate(self):
+    def diffusion_update(self):
         if (self.constDiff is True):
             self.prob = self.CMat.dot(self.prob)
         else:
@@ -401,7 +401,7 @@ class FPE_integrator_2D(BaseIntegrator):
             self.prob = scipy.sparse.linalg.spsolve(self.AMat, bVec)
 
     # TODO Also put this in the base class
-    def advectionUpdate(
+    def advection_update(
         self, forceParams: Tuple, forceFunc_x: Callable, forceFunc_y: Callable,
         deltaT: float
     ):
@@ -716,7 +716,7 @@ class FPE_integrator_2D(BaseIntegrator):
         self.prob = np.reshape(prob_mat, self.Nx * self.Ny)
 
     # TODO write out hese routines
-    def laxWendroff(self):
+    def lax_wendroff(self):
         pass
 
     def _calcFlux_laxWendroff(self):

@@ -1,7 +1,8 @@
 import pytest
 import numpy as np
 
-from FPE.Integrator import FPE_Integrator_1D
+from fokker_planck.integrator import FokkerPlanck1D
+from fokker_planck.types.basetypes import BoundaryCondition
 
 # Source of truth matrices for each boundary condition
 
@@ -51,9 +52,9 @@ BMat_test_open = np.array([
 ])
 
 testing_matrices = [
-    {'BC': 'hard-wall', 'AMat': AMat_test, 'BMat': BMat_test},
-    {'BC': 'periodic', 'AMat': AMat_test_periodic, 'BMat': BMat_test_periodic},
-    {'BC': 'open', 'AMat': AMat_test_open, 'BMat': BMat_test_open}
+    {'BC': BoundaryCondition.HardWall, 'AMat': AMat_test, 'BMat': BMat_test},
+    {'BC': BoundaryCondition.Periodic, 'AMat': AMat_test_periodic, 'BMat': BMat_test_periodic},
+    {'BC': BoundaryCondition.Open, 'AMat': AMat_test_open, 'BMat': BMat_test_open}
 ]
 
 
@@ -64,7 +65,7 @@ def test_default_instatiation():
     dx = 0.01
     xArray = np.arange(0, 1, dx)
     # Cant instantiate this directly as it has abstract methods
-    _ = FPE_Integrator_1D(D, dt, dx, xArray)
+    _ = FokkerPlanck1D(D, dt, dx, xArray)
 
 
 def test_input_error_handling():
@@ -77,7 +78,7 @@ def test_input_error_handling():
 
     # Act
     with pytest.raises(ValueError):
-        _ = FPE_Integrator_1D(D, dt, dx, xArray, diffScheme=error_config)
+        _ = FokkerPlanck1D(D, dt, dx, xArray, diff_scheme=error_config)
 
 
 @pytest.mark.parametrize("init_config", testing_matrices)
@@ -92,7 +93,7 @@ def test_diffusion_matrix_initialization(init_config):
     BMat_test_local = init_config["BMat"]
 
     # Act
-    integrator = FPE_Integrator_1D(D, dt, dx, xArray, boundaryCond=boundaryCond)
+    integrator = FokkerPlanck1D(D, dt, dx, xArray, boundary_cond=boundaryCond)
 
     error_A = np.round(AMat_test_local - integrator.AMat, 5)
     error_B = np.round(BMat_test_local - integrator.BMat, 5)
@@ -100,3 +101,7 @@ def test_diffusion_matrix_initialization(init_config):
     # Assert
     assert np.sum(error_A) == 0
     assert np.sum(error_B) == 0
+
+
+if __name__ == "__main__":
+    pytest.main([__file__])
