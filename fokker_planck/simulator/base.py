@@ -228,9 +228,11 @@ class DynamicSimulator1D(Simulator1D):
             cp_tracker=cp_tracker
         )
 
-    @abstractmethod
     def build_friction_array(self) -> np.ndarray:
-        pass
+        raise NotImplementedError(
+            'If you want to use optimal protocol mode, yu must implement '
+            '`build_friction_array` in the derived class of DynamicSimulator1D'
+        )
 
     @abstractmethod
     def initialize_probability(self):

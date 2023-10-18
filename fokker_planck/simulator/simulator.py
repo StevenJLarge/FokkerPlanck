@@ -71,11 +71,11 @@ class PeriodicEquilibrationSimulator(StaticSimulator1D):
 class BreathingSimulator(DynamicSimulator1D):
     def __init__(
         self, fpe_config: Dict, k_i: float, k_f: float,
-        forceFunction: Callable, energyFunction: Callable
+        force_function: Callable, energy_function: Callable
     ):
         super().__init__(fpe_config, k_i, k_f)
-        self.forceFunc = forceFunction
-        self.energyFunc = energyFunction
+        self.force_func = force_function
+        self.energy_func = energy_function
 
     def build_friction_array(self) -> np.ndarray:
         return self.lambda_array ** (3/2)
@@ -90,7 +90,7 @@ class BreathingSimulator(DynamicSimulator1D):
             raise ValueError('CFL not satisfied!')
 
         self.fpe.work_step(
-            params_bkw, params_fwd, self.forceFunc, self.energyFunc
+            params_bkw, params_fwd, self.force_func, self.energy_func
         )
 
 
