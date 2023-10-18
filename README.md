@@ -208,7 +208,8 @@ In practice, using the dynamics simulators requires slightly more specification,
 
 class BreathingSimulator(DynamicSimulator1D):
     def __init__(
-        self, fpe_config: dict, k_init: float, k_final: float, force_function, energy_function
+        self, fpe_config: dict, k_init: float, k_final: float,
+        force_function, energy_function
     ):
         super().__init__(fpe_config, k_init, k_final)
         self.force_func = force_function
@@ -234,6 +235,7 @@ class BreathingSimulator(DynamicSimulator1D):
 
 ```
 
+### The `SimulationResult`
 
 <!-- ## In the Weeds: Integrator Details and Options
 
