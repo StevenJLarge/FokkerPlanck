@@ -9,7 +9,7 @@ To install this package through pip use:
 <br />
 
 <p align='center'>
-    <img src="https://github.com/StevenJLarge/FokkerPlanck/blob/master/public/resources/bistable_equilibration_single.png?raw=true" width="75%" vspace="30px"/>
+    <img src="https://github.com/StevenJLarge/FokkerPlanck/blob/master/public/resources/bistable_equilibration_single_2.png?raw=true" width="75%" vspace="30px"/>
 </p>
 
 
