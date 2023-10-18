@@ -8,6 +8,11 @@ To install this package through pip use:
 
 <br />
 
+<p align='center'>
+    <img src="https://github.com/StevenJLarge/FokkerPlanck/blob/master/public/resources/bistable_equilibration_single.png?raw=true" width="75%" vspace="30px"/>
+</p>
+
+
 ## Table of Contents
 
 - [Overview](#overview)
