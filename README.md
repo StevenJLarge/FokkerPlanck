@@ -27,6 +27,7 @@ To install this package through pip use:
 
 ## Overview
 
+
 The intent of this package is to provide simple and user-friendly access to a Fokker-Planck equation integration suite that makes is relatively quick and simple for the end-user to run simulations of stockastic systems within a dynamic potential energy function, as well as trcking and investigating the steady state and time-dpendent properties of physical observables and quantities of interst, like work, power, and flux.
 
 This is made possible by abstracting away many of the low-level detaisl of the integrator itself, and focusing on providing a simple interface that allows users to rapidly build pupose-built simulations, and allows for the flexibility of the system to be generalizable, extensible, and modular enough to be improved upon easily.
