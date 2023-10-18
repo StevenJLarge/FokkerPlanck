@@ -7,7 +7,7 @@ with open('README.md', 'r', encoding='utf-8') as f:
 setup(
     name='fokker-planck',
     packages=find_packages(),
-    version='1.0.3',
+    version='1.0.4',
     long_description=long_description,
     long_description_content_type='text/markdown',
     description='''
