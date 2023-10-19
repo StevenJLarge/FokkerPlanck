@@ -9,8 +9,11 @@ To install this package through pip use:
 <br />
 
 <p align='center'>
-    <img src="https://raw.githubusercontent.com/StevenJLarge/FokkerPlanck/master/public/resources/bistable_equilibration_single_2.png?token=GHSAT0AAAAAACHJKKJIPXVXXT4EHRNYSIMGZJPLXZA" width="75%" vspace="30px"/>
+    <img 
+    src="https://slarge-readme-images.s3.us-west-2.amazonaws.com/bistable_equilibration_single_2.png?response-content-disposition=inline&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEKf%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLXdlc3QtMiJHMEUCIA0ZqaY5mvxc%2BtamnqZhXtn1VpPRfU8aKlbhF7Fi59blAiEAwcDzNw%2BMiM43sm3tcwH9UWx1%2FJQmaxRqMm0UohXEZj8q8QIIwP%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FARAAGgwzNTEwNjgyNDQ0MjkiDP6uE%2F9%2FeOJqz1QyRCrFAuoqWffVSHI9QAkYxi6U6%2FQ%2BZSxlmEebzqoQwiu%2F06C14d6d0myAWNRgDzDXyDCJt7gu%2FkrsK9JOoj3biA%2BiJvvc%2FGTavtg2wAemVFwDF8H1WDwSVQJe582y%2BGFl7qhOE9jPxfgjp%2FWjCBIFpim0xltFCfqgY0PQvbze16Vc0V7MRrrsl39Gjte%2Bulld7D2TnI6Y39LXJm4nepApoDJn45NcoSKyuzdNfTU%2BtykXwhZ%2BGLZLteTHAcO%2FjrKwX%2Fdg2ieGNlmLxx6Qs%2BGJwzxogV3ruEOGL9eevNnb%2BQEpCM4EG%2FmrD0aH2WBDP%2BlPliLMYl4rBAkbM39yAewoYV117IsA8WI096Dw2MIy9KrvUt3bu4choT8e6TXYeRznWQPEALSXR%2FYJDXluRSFDohKAblxfjSf6zB8ZfBnwMPn%2FYzKyVoVc7wswqvnEqQY6swJ6subBXTRkBLOr%2B1du%2BTlj5QqDI098Cq00QYAap1OE6JBH3lS0E62uzaiCzVD2oUlXbDf4OFlqBH8Y9FSPKwrld%2Fv%2Ff9CjfImMqFt%2BB%2BQ80kkcVKRdIJM0f4QXOSrZkRzlABl6WIOMozdRWSmsIDfgoX1wAF2UcXhu7AbOVFZdF3Gvmp5lCxh%2Bwgn2AcCaujMIFrLLaGarRPRcGmHbtGJSqORlxIxNYtn2hjGzK3QItT1oEQamLHD2s8p1DlJd1haabLXbpVP3kCWIA9JdjB4rG7zvSoiCFEzXSY8FnRF9fhk%2B11pWzqvNsCLVwQaYgkOmvQrtDjcHAmCM1CsOCJ0kQ0MA8SBJVD%2FIjSCEk5gwGQilGAjLl5EfGh4vIz8FGBkhCfUKPP7yuuk%2B92O9mlGwzbsQ&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20231019T143015Z&X-Amz-SignedHeaders=host&X-Amz-Expires=300&X-Amz-Credential=ASIAVDPKMJHGUV6W363P%2F20231019%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Signature=84b38cc1887efe06e9be2c8645b2495db4d24202de1adc738964e1fb813925cc"
+    width="75%" vspace="30px"/>
 </p>
+
 
 
 ## Table of Contents
