@@ -56,7 +56,7 @@ where $U'(x,\boldsymbol{\lambda})$ is the position-dependent force experienced b
 
 Before delving into more detail on the individual components and their uses, we breifly show in this section how to run a simple simulation of a diffusing particle in a 1D harmonic trapping potential, through the use of the `Simulator` interface.
 
-The code snippet below shows how simple such a procedure is, starting with a system initialized from a uniform distribution an iterating the dynamics for 100 steps
+The code snippet below shows how simple such a procedure is, starting with a system initialized from a Gaussian distribution an iterating the dynamics for 1000 steps (`total_time / dt`)
 
 ```python
 from fokker_planck.simulator import simulator
@@ -66,16 +66,20 @@ import fokker_planck.forceFunctions as ff
 fpe_config = {
     "D": 1.0,       # Diffusion coefficient
     "dx": 0.01,     # Discretization in x-dimension
-    "dt": 0.001,    # Time discretization
-    "x_min": -3,    # minimum x-value in domain
-    "x_max": 3      # maximum x-value in domain
+    "dt": 0.00025,  # Time discretization
+    "x_min": -2,    # minimum x-value in domain
+    "x_max": 1      # maximum x-value in domain
 }
 
 # Harmonic trap strength
-trap_stringth = 4
+trap_stringth = 16
+
+# initial distribution parameters
+init_var = 1 / trap_strength
+init_pos = -1
 
 # Total time of simulation
-total_time = 1.0
+total_time = 0.25
 
 # Initialize simulator object, passing the configuration parameters for the
 # integrator, as well as the trap parameters
@@ -84,7 +88,7 @@ fpe_sim = simulator.HarmonicEquilibrationSimulator(fpe_config, trap_strength)
 # Initialize the probability, this could also be done in the constructor of
 # the simulator object, in this case it will initialize to a Gaussian
 # distribution
-fpe_sim.initialize_probability(init_var=1/16)
+fpe_sim.initialize_probability(mean=init_pos, init_var=init_var)
 
 # run the simulation!
 sim_result = fpe_sim.run_simulation(total_time)
@@ -92,6 +96,29 @@ sim_result = fpe_sim.run_simulation(total_time)
 ```
 
 The result type will be `SimulationResult` (or some custom subclass of that type) and will contain all of the desired information on the simulation run. Also, this type can obviously be subclassed and expanded to contain any desired information. For instance, in slightly more complex scenario, we can define our own energy and force functions, to simulate the behaviour of whatever systemwe want to simulate.
+
+For this specific scenario, the static simulator will populate an array of probability distributions (called `prob_tracker` that will be present on all `SimulationResult` objects) through time, at intervals of a specficied number of timesteps, as a means of tracking the evolution of the initial distribution. As a result, we can visualize the evolution of the system over time:
+```python
+import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set(style='darkgrid')
+
+Pal = sns.color_palette('Spectral', len(sim_result.prob_tracker))
+
+fig, ax = plt.subplots(1, 1, figsize=(6, 3.5))
+
+for i, prob in enumerate(sim_result.prob_tracker):
+    ax.plot(sim_result.x_array, prob, color=Pal[i], alpha=0.6)
+
+```
+The results of this plot are shown below.
+
+<p align='center'>
+    <img 
+    src="https://slarge-readme-images.s3.us-west-2.amazonaws.com/harmonic_relaxation.png"    width="75%" vspace="30px"/>
+</p>
+
+Here, we can see the initial distribution evolve towards the equilibrium distribution (black dashed line) over time.
 
 ## 1D Simulations
 

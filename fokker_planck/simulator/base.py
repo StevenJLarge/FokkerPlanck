@@ -250,6 +250,7 @@ class SimulationResult:
         cp_tracker: Optional[Iterable] = None
     ):
         self._sim = sim
+        self.x_array = self._sim.fpe.x_array
         self.CP = cp_tracker
         self.prob_tracker = prob_tracker
         self.time = time_tracker

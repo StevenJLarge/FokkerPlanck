@@ -32,7 +32,7 @@ class HarmonicEquilibrationSimulator(StaticSimulator1D):
         self.force_func = ff.harmonic_force
         self.force_params = [k_trap, trap_min]
 
-    def initialize_probability(self, init_var: Optional[float] = None):
+    def initialize_probability(self, mean: Optional[float] = None, init_var: Optional[float] = None):
         if init_var is None:
             x_len = len(self.fpe_args.x_array)
             uni_prob = (np.ones(x_len) / ((x_len - 2) * self.fpe_args.dx))
@@ -40,7 +40,9 @@ class HarmonicEquilibrationSimulator(StaticSimulator1D):
             uni_prob[-1] = 0
             self.fpe_prob = uni_prob
         else:
-            self.fpe.initialize_probability(self.force_params[1], init_var)
+            if mean is None:
+                mean = self.force_params[1]
+            self.fpe.initialize_probability(mean, init_var)
 
 
 class PeriodicEquilibrationSimulator(StaticSimulator1D):
