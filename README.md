@@ -36,11 +36,11 @@ This is made possible by abstracting away many of the low-level detaisl of the i
 
 At its heart, this package is interested in integrating/solving the Fokker-Planck equation
 
-In this `README` we first discuss the basics of the Fokker-Planck equation as it is often used, and then move onto the base case of a 1D integration, then briefly discuss the 2-dimensional extension. Following this, we introduce the Simulator interface, and show how its possible to run several nontriial simulations of physical system behaviour through its use, and the necessary requirements to customize that behaviour for specific purpose-driven investigations.
+In this `README` we first discuss the basics of the Fokker-Planck equation as it is often used, and then move onto the base case of a 1D integration, then briefly discuss the 2-dimensional extension. Following this, we introduce the Simulator interface, and show how its possible to run several nontrivial simulations of physical system behaviour through its use, and the necessary requirements to customize that behaviour for specific purpose-driven investigations.
 
 ## Fokker Planck equation
 
-Simply put, this software package deals with the Fokker-Planck equation. This equation represents the time-evolution of the probability distribution over states for a system that evolves under drift and diffusion alone. In fact, one can derive the FPE from the effective 'continuity' equation for stochastic processes, the Chapman Kolmogorov equation (see Chapter 3 of Ref.[2]). This means that the resulting behaviour is diffusive in nature, and will not capture heavy-tailed distributions or situations where anomalous diffusion takes place. For that, we would need to model a jump kernel explicitly into the equation, or support fractional derivative terms, which we do not.
+Simply put, this software package deals with the Fokker-Planck equation. This equation represents the time-evolution of a probability distribution over states for a system that evolves under drift and diffusion. In fact, one can derive the FPE from the effective 'continuity' equation for stochastic processes,the Chapman Kolmogorov equation (see Chapter 3 of Ref.[2]). This means that the resulting behaviour is diffusive in nature, and will not capture heavy-tailed distributions or situations where anomalous diffusion takes place. For that, we would need to model a jump kernel explicitly into the equation, or support fractional derivative terms, which we do not.
 
 However, in full generality the FPE representing this type of evolution can be represented in $N$-spatial dimensions as
 
@@ -50,7 +50,7 @@ which is rather complicated, but essentially allows for arbitrary mobilities $\m
 
 $$ \partial_t p(x, t) = -\beta\partial_x \left[ U'(x, \boldsymbol{\lambda})p(x, t) \right] + D\partial^2_{xx}p(x, t) $$
 
-where $U'(x,\boldsymbol{\lambda})$ is the position-dependent force experienced by a particle at location $x$.  Ultimately, the current functionality of this package serves to numerically integrate this equation in a way that provides accurate time-dependent tracking of the probability distribution through time. As we will show this allows a number of nontrivial quantitative calcualtiosn to be made for model systems of interest.
+where $U'(x,\boldsymbol{\lambda})$ is the position-dependent force experienced by a particle at location $x$.  Ultimately, the current functionality of this package serves to numerically integrate this equation in a way that provides accurate time-dependent tracking of the probability distribution through time. As we will show this allows a number of nontrivial quantitative calcualtions to be made for model systems of interest.
 
 ## A Preview
 
@@ -118,13 +118,29 @@ The results of this plot are shown below.
     src="https://slarge-readme-images.s3.us-west-2.amazonaws.com/harmonic_relaxation.png"    width="75%" vspace="30px"/>
 </p>
 
-Here, we can see the initial distribution evolve towards the equilibrium distribution (black dashed line) over time.
+Here, we can see the initial distribution converges towards the equilibrium distribution (black dashed line) over time.
+
+In fact, we can be even more quantitative about this. Following the procedure for this testing outlined in notebook `notebooks/functionality.04-slarge-advection-diffusion.ipynb`, we can also track the distribution variance and average position over time, and compare them to known analytical results.  Specifically, for a stochastic system in a parabolic potential with trap strength $k_{\rm init}$, that is initially in a Gaussian distribution with mean position $\langle x\rangle = a$ and variance $\sigma_{\rm init}$, the time-dependent variance and mean should evolve according to
+
+$$ \langle x(t) \rangle = $$
+$$ \langle\delta x^2(t)\rangle = $$
+
+The figure below shows the time evolution of these values in time, for a few sample trap strengths, as compared to the theoretical results (black dashed lines). This shows that not only the qualitative features of the tiem-evolution are consistent with theory, but also that the quantitative evolution is as expected.
+
+<p align='center'>
+    <img 
+    src="https://slarge-readme-images.s3.us-west-2.amazonaws.com/harmonic_relaxation_compare.png"    width="75%" vspace="30px"/>
+</p>
 
 ## 1D Simulations
 
 As of this point, 1D simulations are all that are supported by the integrator. Full details on the integration process are outlined in supporting documentation, but we outline here the basic ideas behind the integration scheme.
 
-Put broadly, there are 3 key pieces to the construction of the integrator: the advective term, the diffusive term, and the operator splitting methodology that stitches them together.  The advection term (the one that corresponds to the forcing term) uses a second-order accurate in time method known as the 2-step Lax-Wendroff method, while the diffusion term is updated using the Crank-Nicolson method (which is also second order in time). Now, we able to do these two updates separately because of the operator splitting methods adopted in updating the full probability. Put simply, we can separately apply updates from the advective and diffusive components of the motion, in such a way that replicates (up to a certain accuracy) the simultaneous application of the entire equation.
+Put broadly, there are 3 key pieces to the construction of the integrator: 
+- the advective term
+- the diffusive term
+- the operator splitting methodology 
+that stitches them together.  The advection term (the one that corresponds to the forcing term) uses a second-order accurate in time method known as the 2-step Lax-Wendroff method, while the diffusion term is updated using the Crank-Nicolson method (which is also second order in time). Now, we able to do these two updates separately because of the operator splitting methods adopted in updating the full probability. Put simply, we can separately apply updates from the advective and diffusive components of the motion, in such a way that replicates (up to a certain accuracy) the simultaneous application of the entire equation.
 
 The details of these methds, and independent tests of their efficacy are contained in a series of notebooks in the [github source](https://github.com/StevenJLarge/FokkerPlanck) under the locations:
 - `notebooks/functionality/01-slarge-advection.ipynb`: Advection term
