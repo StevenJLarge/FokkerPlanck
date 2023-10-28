@@ -160,9 +160,9 @@ Not yet implemented: This is a feature that is coming down the pipline soon!
 
 ## The _Simulator_ Interface
 
-Ultimately, the ease-of-use of the package is made possible through the _Simulator_ interface. The goal of this, is to create an abstraction of the core integrator functionality, so the end-user can access a simple interface to it, to solve and explore problems of interest.
+Ultimately, the ease-of-use of the package is made possible through the _Simulator_ interface. The goal of this, is to create an abstraction of the core integrator functionality, so the end-user can access a simple and customizable interface that makes the process of solving and exploring problems of interest a simple task.
 
-The simulator interface is defined in the base class `simulator/base.py`, which defined the low level functionality. At present, there are two abstract subclasses of this base class: `DynamicSimulator` and `StaticSimulator`, which repspectively, provide common functionality for simualtions that are meant to track behaviour within a dynamic or static potential.
+The simulator interface is defined in the base class `simulator/base.py`, which defines the low level functionality. At present, there are two abstract subclasses of this base class: `DynamicSimulator` and `StaticSimulator`, which repspectively, provide common functionality for simulations that are meant to track behaviour within a dynamic or static potential.
 
 On initial release, there are two static Simulators implemented, and two dynamic simulators (the periodic system has not as of yet been converted into a simulator class).
 
@@ -198,16 +198,16 @@ import fokker_planck.forceFunctions as ff
 fpe_config = {
     "D": 1.0,       # Diffusion coefficient
     "dx": 0.01,     # Discretization in x-dimension
-    "dt": 0.001,    # Time discretization
-    "x_min": -3,    # minimum x-value in domain
-    "x_max": 3      # maximum x-value in domain
+    "dt": 0.00025,    # Time discretization
+    "x_min": -2,    # minimum x-value in domain
+    "x_max": 2      # maximum x-value in domain
 }
 
 # Harmonic trap strength
-trap_stringth = 4
+trap_stringth = 8.0
 
 # Total time of simulation
-total_time = 1.0
+total_time = 0.25
 
 # Initialize simulator object, passing the configuration parameters for the
 # integrator, as well as the trap parameters
@@ -215,12 +215,19 @@ fpe_sim = simulator.HarmonicEquilibrationSimulator(fpe_config, trap_strength)
 
 # Initialize the probability, this could also be done in the constructor of
 # the simulator object, in this case it will initialize to a Gaussian
-# distribution
-fpe_sim.initialize_probability(init_var=1/16)
+# distribution, shiftd off of the equilibrium position by 0.25
+fpe_sim.initialize_probability(mean=-0.25, init_var=1/16)
 
 # run the simulation!
 sim_result = fpe_sim.run_simulation(total_time)
 ```
+
+Based on the result of this simulation, we can plot the evolution of the probabiity over time, as well as the time-dependent position of the distribution mean. The figure below shows bowth of these things, and compares the distribution to its asymptotic (equilibrium) dstribution, as shown by the black dashed line.
+
+<p align='center'>
+    <img 
+    src="https://slarge-readme-images.s3.us-west-2.amazonaws.com/relaxation_harmonic_sim_ex.png"    width="75%" vspace="30px"/>
+</p>
 
 Curretly, there are 2 static simulators defined, one for equilibration within a harmonic potential, and one defined for equilibration/relaxation in a periodic (sinusoidal) potential.  However, to create a new static simulator, for a different potential, you just need to deine an appropriate orce function, and then create a class which implements the methods above, and the simulation should work.  
 
@@ -250,7 +257,7 @@ Which should work, given the configuration has parameters that are stable.
 
 The dynamic simulators provide additional fucntionality beyond what exists for the static scenarios. For the dynamic simulators, you are required to implement 3 methods:
 - `initialize_probability(...)`: code to initialize the prbability distribution
-- `update(...)`: A method to update the probability distrubiton, tpyically by calling the `self.fpe.integrate_step` or `self.fpe_work_step` routines, deending on if you want to track energy flows or not.
+- `update(...)`: A method to update the probability distrubiton, typically by calling the `self.fpe.integrate_step` or `self.fpe_work_step` routines, deending on if you want to track energy flows or not.
 - `build_friction_array(...)` Optional, but if you want to study optimal protocols, than this method is requred, and simply requires that for the input array of contraol parameter values, we can associate a value representing the generalized friction tensor.
 
 In practice, using the dynamics simulators requires slightly more specification, but it is not too burdensome, considering the somplexity of wwhat is happening behind the scenes.  For instance, the code for implementing the Breathing trap simulator (a time dependent spring constant) is shown below,
