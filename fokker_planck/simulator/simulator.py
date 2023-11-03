@@ -88,7 +88,7 @@ class BreathingSimulator(DynamicSimulator1D):
     def update(self, protocol_bkw: CPVector, protocol_fwd: CPVector):
         params_bkw = ([protocol_bkw, 0])
         params_fwd = ([protocol_fwd, 0])
-        if not self.check_cfl(params_fwd, self.force_func):
+        if not self.check_cfl(params_fwd):
             raise ValueError('CFL not satisfied!')
 
         self.fpe.work_step(

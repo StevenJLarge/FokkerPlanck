@@ -17,7 +17,10 @@ setup(
     author_email='stevelarge7@gmail.com',
     license='MIT',
     install_requires=[
-
+        "matplotlib",
+        "numpy",
+        "scipy",
+        "statsmodels"
     ],
     project_urls={
         'Source': 'https://github.com/StevenJLarge/FokkerPlanck'

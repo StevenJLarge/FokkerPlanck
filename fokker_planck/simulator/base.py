@@ -21,8 +21,9 @@ class BaseSimulator(ABC):
         self.fpe: Integrator = None
 
     def check_cfl(self, params):
-        if not self.fpe.check_CFL(params, self.force_func):
-            raise ValueError('CFL not satisfied!')
+        # if not self.fpe.check_CFL(params, self.force_func):
+            # raise ValueError('CFL not satisfied!')
+        return self.fpe.check_CFL(params, self.force_func)
 
 
 class KeyElements1D(Enum):

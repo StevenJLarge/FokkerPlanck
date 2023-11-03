@@ -293,6 +293,7 @@ class BreathingSimulator(DynamicSimulator1D):
 
 ```
 
+
 ### The `SimulationResult`
 
 <!-- ## In the Weeds: Integrator Details and Options
