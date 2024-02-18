@@ -225,7 +225,10 @@ class FokkerPlanck1D(Integrator):
 
         elif self.BC == BoundaryCondition.HardWall:
             self.AMat[idx, idx] = 1 + 2 * alpha
-            self.AMat[idx, abs(idx - 1)] = -2 * alpha
+            if idx == 0:
+                self.AMat[idx, idx + 1] = -2 * alpha
+            elif idx == self.N - 1:
+                self.AMat[idx, idx - 1] = -2 * alpha
 
         elif self.BC == BoundaryCondition.Open:
             pass
@@ -254,7 +257,10 @@ class FokkerPlanck1D(Integrator):
         # NOTE double check this boundary resolution..
         elif self.BC == BoundaryCondition.HardWall:
             self.BMat[idx, idx] = 1
-            self.BMat[idx, abs(idx - 1)] = 0
+            if idx == 0:
+                self.BMat[idx, idx + 1] = 0
+            elif idx == self.N - 1:
+                self.BMat[idx, idx - 1] = 0
 
         elif self.BC == BoundaryCondition.Open:
             pass
