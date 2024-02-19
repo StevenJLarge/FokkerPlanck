@@ -95,7 +95,7 @@ sim_result = fpe_sim.run_simulation(total_time)
 
 ```
 
-The result type will be `SimulationResult` (or some custom subclass of that type) and will contain all of the desired information on the simulation run. Also, this type can obviously be subclassed and expanded to contain any desired information. For instance, in slightly more complex scenario, we can define our own energy and force functions, to simulate the behaviour of whatever systemwe want to simulate.
+The result type will be `SimulationResult` (or some custom subclass of that type) and will contain all of the desired information on the simulation run. Also, this type can obviously be subclassed and expanded to contain any desired information. For instance, in slightly more complex scenario, we can define our own energy and force functions, to simulate the behaviour of whatever system we want to simulate.
 
 For this specific scenario, the static simulator will populate an array of probability distributions (called `prob_tracker` that will be present on all `SimulationResult` objects) through time, at intervals of a specficied number of timesteps, as a means of tracking the evolution of the initial distribution. As a result, we can visualize the evolution of the system over time:
 ```python
@@ -125,7 +125,7 @@ In fact, we can be even more quantitative about this. Following the procedure fo
 $$ \langle x(t) \rangle = \lambda - \langle x_0\rangle e^{-\beta D k t} $$
 $$ \langle\delta x^2(t)\rangle = \sigma_0^2 e^{-2\beta D k t } $$
 
-The figure below shows the time evolution of these values in time, for a few sample trap strengths, as compared to the theoretical results (black dashed lines). This shows that not only the qualitative features of the tiem-evolution are consistent with theory, but also that the quantitative evolution is as expected.
+The figure below shows the time evolution of these values in time, for a few sample trap strengths, as compared to the theoretical results (black dashed lines). This shows that not only the qualitative features of the time-evolution are consistent with theory, but also that the quantitative evolution is as expected.
 
 <p align='center'>
     <img 
@@ -147,7 +147,7 @@ The details of these methds, and independent tests of their efficacy are contain
 - `notebooks/functionality/02-slarge-diffusion.ipynb`: Diffusion term
 - `notebooks/functionality/03-slarge-operator-pslitting.ipynb`: Operator splitting methods
 
-Once this is put together, one can simulate dynamics of a system governed by the Smoluchowski equation, for an arbitrary potential energy function (given that the parameter satisfy the appropriate stability conditions).
+Once this is put together, one can simulate dynamics of a system governed by the Smoluchowski equation, for an arbitrary potential energy function (given that the parameters satisfy the appropriate stability conditions).
 
 To see how this can be used to model the energetic inputs for model physical systems such as a constant-velocity harmonic trap, or a harmonic potential with a time-dependent spring constant, as well as in the physics of a system evolving within a sinusoudal potential, see the notebooks:
 - `notebooks/functionality/advection-diffusion.ipynb`: Constant-velocity trap, and other things
@@ -188,7 +188,7 @@ class HarmonicEquilibrationSimulator(StaticSimulator1D):
 
 ```
 
-ow, from this, we can relatively simply run a simulation that shows a system relaxing into an equilibrium with the harmonic potential by similar means as the first code cell:
+Now, from this, we can relatively simply run a simulation that shows a system relaxing into an equilibrium with the harmonic potential by similar means as the first code cell:
 
 ```python
 from fokker_planck.simulator import simulator
@@ -222,7 +222,7 @@ fpe_sim.initialize_probability(mean=-0.25, init_var=1/16)
 sim_result = fpe_sim.run_simulation(total_time)
 ```
 
-Based on the result of this simulation, we can plot the evolution of the probabiity over time, as well as the time-dependent position of the distribution mean. The figure below shows bowth of these things, and compares the distribution to its asymptotic (equilibrium) dstribution, as shown by the black dashed line.
+Based on the result of this simulation, we can plot the evolution of the probabiity over time, as well as the time-dependent position of the distribution mean. The figure below shows both of these things, and compares the distribution to its asymptotic (equilibrium) dstribution, as shown by the black dashed line.
 
 <p align='center'>
     <img 
@@ -255,12 +255,12 @@ Which should work, given the configuration has parameters that are stable.
 
 ### Dynamic Simulators
 
-The dynamic simulators provide additional fucntionality beyond what exists for the static scenarios. For the dynamic simulators, you are required to implement 3 methods:
-- `initialize_probability(...)`: code to initialize the prbability distribution
+The dynamic simulators provide additional functionality beyond what exists for the static scenarios. For the dynamic simulators, you are required to implement 3 methods:
+- `initialize_probability(...)`: code to initialize the probability distribution
 - `update(...)`: A method to update the probability distrubiton, typically by calling the `self.fpe.integrate_step` or `self.fpe_work_step` routines, deending on if you want to track energy flows or not.
-- `build_friction_array(...)` Optional, but if you want to study optimal protocols, than this method is requred, and simply requires that for the input array of contraol parameter values, we can associate a value representing the generalized friction tensor.
+- `build_friction_array(...)` Optional, but if you want to study optimal protocols, than this method is required, and simply requires that for the input array of control parameter values, we can associate a value representing the generalized friction tensor.
 
-In practice, using the dynamics simulators requires slightly more specification, but it is not too burdensome, considering the somplexity of wwhat is happening behind the scenes.  For instance, the code for implementing the Breathing trap simulator (a time dependent spring constant) is shown below,
+In practice, using the dynamics simulators requires slightly more specification, but it is not too burdensome, considering the complexity of wwhat is happening behind the scenes.  For instance, the code for implementing the Breathing trap simulator (a time dependent spring constant) is shown below,
 
 ```python
 
@@ -315,7 +315,6 @@ These notebooks go over the raw functionality, as well as go over a few of the m
 
 <ol>
     <li>"Thermodynamic Metrics and Optimal Paths", D.A. Sivak & G.E. Crooks, <i>Phys. Rev. Lett.</i>, <b>2012</b></li>
-    <li>"Optimal Control of Rotary Motors"</li>
-    <li>"Stochastic Control in Microscopic Nonequilibrium Systems"</li>
-
+    <li>"Optimal Control of Rotary Motors", J.N.E. Lucero, A. Mehdizadeh, & D.A. Sivak, <i>Phys. Rev. E</i>, <b>2019</b></li>
+    <li>"Stochastic Control in Microscopic Nonequilibrium Systems", S.J. Large & D.A. Sivak, <i>EPL</i> , <b>2018</b></li>
 </ol>

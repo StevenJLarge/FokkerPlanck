@@ -80,7 +80,7 @@ class BreathingSimulator(DynamicSimulator1D):
         self.energy_func = energy_function
 
     def build_friction_array(self) -> np.ndarray:
-        return self.lambda_array ** (3/2)
+        return 1 / (self.lambda_array ** 3)
 
     def initialize_probability(self):
         self.fpe.initialize_probability(0, 1 / self.lambda_init)
@@ -94,6 +94,22 @@ class BreathingSimulator(DynamicSimulator1D):
         self.fpe.work_step(
             params_bkw, params_fwd, self.force_func, self.energy_func
         )
+
+    @property
+    def total_work(self):
+        return self.fpe.work_accumulator
+
+    @property
+    def work(self):
+        return self.fpe.work_tracker[::self.tracking_stride]
+
+    @property
+    def simulation_time(self):
+        return self.time_tracker
+
+    @property
+    def power(self):
+        return self.fpe.power_tracker[::self.tracking_stride]
 
 
 class HarmonicTranslationSimulator(DynamicSimulator1D):
