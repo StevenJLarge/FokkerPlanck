@@ -80,7 +80,7 @@ class BreathingSimulator(DynamicSimulator1D):
         self.energy_func = energy_function
 
     def build_friction_array(self) -> np.ndarray:
-        return self.lambda_array ** (3/2)
+        return 1 / (self.lambda_array ** 3)
 
     def initialize_probability(self):
         self.fpe.initialize_probability(0, 1 / self.lambda_init)

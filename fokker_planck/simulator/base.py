@@ -206,6 +206,7 @@ class DynamicSimulator1D(Simulator1D):
         return protocol, self.time_array
 
     def run_simulation(self, tau: float, mode: Optional[str] = "naive"):
+        self.fpe.reset()
 
         protocol, _ = self.build_protocol(tau, mode=mode)
 
