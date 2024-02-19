@@ -232,7 +232,7 @@ class DynamicSimulator1D(Simulator1D):
 
     def build_friction_array(self) -> np.ndarray:
         raise NotImplementedError(
-            'If you want to use optimal protocol mode, yu must implement '
+            'If you want to use optimal protocol mode, you must implement '
             '`build_friction_array` in the derived class of DynamicSimulator1D'
         )
 

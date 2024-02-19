@@ -95,6 +95,22 @@ class BreathingSimulator(DynamicSimulator1D):
             params_bkw, params_fwd, self.force_func, self.energy_func
         )
 
+    @property
+    def total_work(self):
+        return self.fpe.work_accumulator
+
+    @property
+    def work(self):
+        return self.fpe.work_tracker[::self.tracking_stride]
+
+    @property
+    def simulation_time(self):
+        return self.time_tracker
+
+    @property
+    def power(self):
+        return self.fpe.power_tracker[::self.tracking_stride]
+
 
 class HarmonicTranslationSimulator(DynamicSimulator1D):
     def __init__(
