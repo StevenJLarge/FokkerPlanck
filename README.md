@@ -122,8 +122,8 @@ Here, we can see the initial distribution converges towards the equilibrium dist
 
 In fact, we can be even more quantitative about this. Following the procedure for this testing outlined in notebook `notebooks/functionality.04-slarge-advection-diffusion.ipynb`, we can also track the distribution variance and average position over time, and compare them to known analytical results.  Specifically, for a stochastic system in a parabolic potential with trap strength $k_{\rm init}$, that is initially in a Gaussian distribution with mean position $\langle x\rangle = a$ and variance $\sigma_{\rm init}$, the time-dependent variance and mean should evolve according to
 
-$$ \langle x(t) \rangle = $$
-$$ \langle\delta x^2(t)\rangle = $$
+$$ \langle x(t) \rangle = \lambda - \langle x_0\rangle e^{-\beta D k t} $$
+$$ \langle\delta x^2(t)\rangle = \sigma_0^2 e^{-2\beta D k t } $$
 
 The figure below shows the time evolution of these values in time, for a few sample trap strengths, as compared to the theoretical results (black dashed lines). This shows that not only the qualitative features of the tiem-evolution are consistent with theory, but also that the quantitative evolution is as expected.
 

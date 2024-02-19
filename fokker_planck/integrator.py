@@ -9,8 +9,6 @@ diffusion matrix
 Author:         Steven Large
 Created:        August 25th 2019
 
-Version: 2.0.0
-
 Software:       python 3.x
 '''
 from typing import Callable, Optional, Tuple
@@ -78,6 +76,21 @@ class FokkerPlanck1D(Integrator):
     @property
     def variance(self) -> float:
         return np.sum(((self.x_array - self.mean) ** 2) * self.prob * self.dx)
+
+    def normalize_prob(self):
+        """
+        Normalize the probability distribution.
+
+        This method normalizes the probability distribution by dividing each
+        element by the sum of all elements multiplied by the step size.
+
+        Parameters:
+            None
+
+        Returns:
+            None
+        """
+        self.prob = self.prob / (sum(self.prob) * self.dx)
 
     def reset(
         self, variance: Optional[float] = None, mean: Optional[float] = None
@@ -165,34 +178,44 @@ class FokkerPlanck1D(Integrator):
         return True
 
     def init_diffusion_matrix(self):
-        """Routine to initialize the A and B diffusion matrices for diffusion
-        integration
-        """
-        # Set parameters for diffusion matrix iteration
-        self._setDiffusionScheme()
+            """Routine to initialize the A and B diffusion matrices for diffusion
+            integration
+            
+            This method initializes the A and B diffusion matrices used for diffusion integration.
+            It sets the parameters for diffusion matrix iteration and calculates the values of the matrices.
+            The A matrix is calculated using the formula:
+            A = diag(1 + 2 * alpha * exp_imp * ones(N)) - diag(alpha * exp_imp * ones(N - 1), k=1) - diag(alpha * exp_imp * ones(N - 1), k=-1)
+            The B matrix is calculated using the formula:
+            B = diag(1 - 2 * alpha * (1 - exp_imp) * ones(N)) + alpha * diag((1 - exp_imp) * ones(N - 1), k=1) + alpha * diag((1 - exp_imp) * ones(N - 1), k=-1)
+            The boundary columns of the matrices are initialized based on the boundary conditions.
+            The C matrix is calculated as the matrix product of the inverse of A and B.
+            The method also tests if sparse-matrix iteration steps are faster than normal matrix multiplication.
+            """
+            # Set parameters for diffusion matrix iteration
+            self._setDiffusionScheme()
 
-        alpha = self.D * self.dt / (self.dx * self.dx)
+            alpha = self.D * self.dt / (self.dx * self.dx)
 
-        self.AMat = (
-            np.diag(1 + 2 * alpha * self.exp_imp * np.ones(self.N))
-            - np.diag(alpha * self.exp_imp * np.ones(self.N - 1), k=1)
-            - np.diag(alpha * self.exp_imp * np.ones(self.N - 1), k=-1)
-        )
+            self.AMat = (
+                np.diag(1 + 2 * alpha * self.exp_imp * np.ones(self.N))
+                - np.diag(alpha * self.exp_imp * np.ones(self.N - 1), k=1)
+                - np.diag(alpha * self.exp_imp * np.ones(self.N - 1), k=-1)
+            )
 
-        self.BMat = (
-            np.diag(1 - 2 * alpha * (1 - self.exp_imp) * np.ones(self.N))
-            + alpha * np.diag((1 - self.exp_imp) * np.ones(self.N - 1), k=1)
-            + alpha * np.diag((1 - self.exp_imp) * np.ones(self.N - 1), k=-1)
-        )
+            self.BMat = (
+                np.diag(1 - 2 * alpha * (1 - self.exp_imp) * np.ones(self.N))
+                + alpha * np.diag((1 - self.exp_imp) * np.ones(self.N - 1), k=1)
+                + alpha * np.diag((1 - self.exp_imp) * np.ones(self.N - 1), k=-1)
+            )
 
-        # Initialize boundary columns based on self.BC
-        self._initialize_boundary_terms(alpha)
+            # Initialize boundary columns based on self.BC
+            self._initialize_boundary_terms(alpha)
 
-        self.CMat = np.matmul(np.linalg.inv(self.AMat), self.BMat)
+            self.CMat = np.matmul(np.linalg.inv(self.AMat), self.BMat)
 
-        # Test if sparse-matrix iteration steps are faster than normal matrix
-        # multiplication
-        self.test_sparse()
+            # Test if sparse-matrix iteration steps are faster than normal matrix
+            # multiplication
+            self.test_sparse()
 
     def _initialize_boundary_terms(self, alpha: float):
         """Initialize boundary terms for diffusion matrices
@@ -225,7 +248,10 @@ class FokkerPlanck1D(Integrator):
 
         elif self.BC == BoundaryCondition.HardWall:
             self.AMat[idx, idx] = 1 + 2 * alpha
-            self.AMat[idx, abs(idx - 1)] = -2 * alpha
+            if idx == 0:
+                self.AMat[idx, idx + 1] = -2 * alpha
+            elif idx == self.N - 1:
+                self.AMat[idx, idx - 1] = -2 * alpha
 
         elif self.BC == BoundaryCondition.Open:
             pass
@@ -251,10 +277,12 @@ class FokkerPlanck1D(Integrator):
             self.BMat[idx, (idx + 1) % self.N] = alpha * (1 - self.exp_imp)
             self.BMat[idx, (idx - 1) % self.N] = alpha * (1 - self.exp_imp)
 
-        # NOTE double check this boundary resolution..
         elif self.BC == BoundaryCondition.HardWall:
             self.BMat[idx, idx] = 1
-            self.BMat[idx, abs(idx - 1)] = 0
+            if idx == 0:
+                self.BMat[idx, idx + 1] = 0
+            elif idx == self.N - 1:
+                self.BMat[idx, idx - 1] = 0
 
         elif self.BC == BoundaryCondition.Open:
             pass

@@ -261,6 +261,8 @@ class Integrator(ABC):
         else:
             self._integrate_step_strang(force_params, force_function)
 
+        self.normalize_prob()
+
     def _integrate_step_lie(self, force_params: Tuple, force_function: Callable):
         """Implementation of Lie splitting update of FPE
 
@@ -328,4 +330,8 @@ class Integrator(ABC):
 
     @abstractmethod
     def lax_wendroff(self, *args, **kwargs):
+        pass
+
+    @abstractmethod
+    def normalize_prob(self):
         pass
