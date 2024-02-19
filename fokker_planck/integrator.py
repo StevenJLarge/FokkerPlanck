@@ -77,7 +77,7 @@ class FokkerPlanck1D(Integrator):
     def variance(self) -> float:
         return np.sum(((self.x_array - self.mean) ** 2) * self.prob * self.dx)
 
-    def normalize(self):
+    def normalize_prob(self):
         """
         Normalize the probability distribution.
 
