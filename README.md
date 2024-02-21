@@ -18,13 +18,11 @@ To install this package through pip use:
 ## Table of Contents
 
 - [Overview](#overview)
-- [The Fokker Planck Equation](#fokker-planck-equation)
+- [The Fokker Planck Equation](#the-fokker-planck-equation)
 - [A Preview](#a-preview)
 - [1D Simulations](#1d-simulations)
 - [2D Simulations](#2d-simulations)
 - [The Simulator Interface](#the-simulator-interface)
-- [In the Weeds: Integrator Options](#in-the-weeds-intgrator-details-and-options)
-- [Additional Resources](#additional-resources)
 - [References](#references)
 
 ## Overview
@@ -38,7 +36,7 @@ At its heart, this package is interested in integrating/solving the Fokker-Planc
 
 In this `README` we first discuss the basics of the Fokker-Planck equation as it is often used, and then move onto the base case of a 1D integration, then briefly discuss the 2-dimensional extension. Following this, we introduce the Simulator interface, and show how its possible to run several nontrivial simulations of physical system behaviour through its use, and the necessary requirements to customize that behaviour for specific purpose-driven investigations.
 
-## Fokker Planck equation
+## The Fokker Planck Equation
 
 Simply put, this software package deals with the Fokker-Planck equation. This equation represents the time-evolution of a probability distribution over states for a system that evolves under drift and diffusion. In fact, one can derive the FPE from the effective 'continuity' equation for stochastic processes,the Chapman Kolmogorov equation (see Chapter 3 of Ref.[2]). This means that the resulting behaviour is diffusive in nature, and will not capture heavy-tailed distributions or situations where anomalous diffusion takes place. For that, we would need to model a jump kernel explicitly into the equation, or support fractional derivative terms, which we do not.
 
@@ -158,7 +156,7 @@ To see how this can be used to model the energetic inputs for model physical sys
 
 Not yet implemented: This is a feature that is coming down the pipline soon!
 
-## The _Simulator_ Interface
+## The Simulator Interface
 
 Ultimately, the ease-of-use of the package is made possible through the _Simulator_ interface. The goal of this, is to create an abstraction of the core integrator functionality, so the end-user can access a simple and customizable interface that makes the process of solving and exploring problems of interest a simple task.
 
