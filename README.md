@@ -164,7 +164,7 @@ The simulator interface is defined in the base class `simulator/base.py`, which 
 
 On initial release, there are two static Simulators implemented, and two dynamic simulators (the periodic system has not as of yet been converted into a simulator class).
 
-### Static Simualtors
+### Static Simulators
 
 To define a static simulator object, you just need to define instance variables `force_func` and `force_params`, or pass them into the parent constuctor, as well as provde a probability initialization routine.  So long as this is done. For example, below shows a simplified implementation of the `HarmonicEquilibrationSimulator` class (which is located in `fokker_planck/simulator/simulator.py` in the [source code](https://github.com/StevenJLarge/FokkerPlanck))
 
