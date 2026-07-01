@@ -1,4 +1,4 @@
-name: "Fokker-Planck: Publish a release to PyPI"
+name: Publish a release to PyPI
 
 on:
   push:
