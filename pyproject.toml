@@ -1,0 +1,33 @@
+[project]
+name = "fokker_planck"
+version = "0.2.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "flake8>=7.3.0",
+    "matplotlib>=3.11.0",
+    "numpy>=2.5.0",
+    "pandas>=3.0.3",
+    "python-dotenv>=1.2.2",
+    "scipy>=1.18.0",
+    "statsmodels>=0.14.6",
+]
+
+[tool.uv]
+package = true
+
+[tool.uv.workspace]
+members = [
+    ".",
+]
+
+[tool.uv.sources]
+fokker-planck = { workspace = true, editable = true }
+
+[dependency-groups]
+dev = [
+    "fokker-planck",
+    "pytest>=9.1.1",
+]
+
