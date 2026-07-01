@@ -5,6 +5,8 @@ on:
     tags:
       # Publish on any tag starting with a `v`, e.g., v0.1.0
       - v*
+  workflow_dispatch:
+
 
 jobs:
   publish:
@@ -25,4 +27,7 @@ jobs:
       - name: Build
         run: uv build
       - name: Publish
-        run: uv publish
+        env:
+          PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        run: uv publish --username "$PYPI_USERNAME" --password "$PYPI_PASSWORD"
