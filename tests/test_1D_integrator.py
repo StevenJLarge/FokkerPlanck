@@ -3,6 +3,7 @@ import numpy as np
 
 from fokker_planck.integrator import FokkerPlanck1D
 from fokker_planck.types.basetypes import BoundaryCondition
+import fokker_planck.forceFunctions as ff
 
 # Source of truth matrices for each boundary condition
 
@@ -101,6 +102,26 @@ def test_diffusion_matrix_initialization(init_config):
     # Assert
     assert np.sum(error_A) == 0
     assert np.sum(error_B) == 0
+
+
+def test_reset_clears_work_trackers():
+    dx = 0.05
+    dt = 0.0005
+    x_array = np.arange(-2, 2, dx)
+    fpe = FokkerPlanck1D(1.0, dt, dx, x_array)
+    fpe.initialize_probability(0, 0.25)
+    fpe.work_step([1.0, 0.0], [2.0, 0.0], ff.harmonic_force, ff.harmonic_energy)
+
+    assert fpe.work_accumulator != 0
+    assert len(fpe.work_tracker) == 1
+    assert len(fpe.power_tracker) == 1
+
+    fpe.reset()
+
+    assert fpe.work_accumulator == 0
+    assert fpe.work_tracker == []
+    assert fpe.power_tracker == []
+    assert fpe.flux_tracker == 0
 
 
 if __name__ == "__main__":

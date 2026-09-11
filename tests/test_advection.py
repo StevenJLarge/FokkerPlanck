@@ -39,6 +39,19 @@ def test_check_CFL_satisfied_for_valid_input_parameters():
     assert cfl_status
 
 
+def test_check_CFL_includes_diffusion_coefficient():
+    # Advective speed is D * F, so CFL = |F| D dt / dx
+    force_param = [1.0]
+    local_dx = 0.05
+    # |F| dt / dx = 0.2 < 1, but D * |F| dt / dx = 2 > 1
+    fpe = FokkerPlanck1D(10.0, dt, local_dx, x_array)
+
+    cfl_status = fpe.check_CFL(force_param, ff.constant_force)
+
+    assert not cfl_status
+    assert np.isclose(fpe.CFL, 10.0 * 1.0 * dt / local_dx)
+
+
 # TESTS -- Dynamics preserve normalization
 @pytest.mark.parametrize("boundary_cond", boundary_condition_list)
 def test_dynamics_preserve_normalization(boundary_cond):

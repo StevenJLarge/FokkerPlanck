@@ -116,14 +116,14 @@ class FokkerPlanck1D(Integrator):
         """Routine to (re)initialize physical quantity trackers.
         """
         # Work and power tracking arrays
-        self.workAccumulator = 0
-        self.workTracker = []
-        self.powerTracker = []
-        self.timeTracker = []
+        self.work_accumulator = 0
+        self.work_tracker = []
+        self.power_tracker = []
+        self.time_tracker = []
 
         self.flux = np.zeros(len(self.x_array))
         # Total (integrated) flux tracker
-        self.fluxTracker = 0
+        self.flux_tracker = 0
 
     def initialize_probability(self, mean: float, var: float):
         """Initialize 1-D Gaussian probability density
@@ -166,8 +166,8 @@ class FokkerPlanck1D(Integrator):
         """
         max_force = np.max(np.abs(force_function(self.x_array, force_params)))
 
-        # set CFL and check if it is less than or greater than Unity
-        self.CFL = max_force * self.dt / self.dx
+        # Advective speed in the scheme is D * F (mobility μ = D at β = 1)
+        self.CFL = max_force * self.D * self.dt / self.dx
         if (self.CFL > 1):
             if self.output:
                 print("\t\tStability warning, invalid CFL --> " + str(self.CFL) + "\n\n")
