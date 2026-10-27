@@ -75,9 +75,10 @@ class PeriodicEquilibrationSimulator(StaticSimulator1D):
 class BreathingSimulator(DynamicSimulator1D):
     def __init__(
         self, fpe_config: Dict, k_i: float, k_f: float,
-        force_function: Callable, energy_function: Callable
+        force_function: Callable, energy_function: Callable,
+        tracking_stride: int = 10
     ):
-        super().__init__(fpe_config, k_i, k_f)
+        super().__init__(fpe_config, k_i, k_f, tracking_stride=tracking_stride)
         self.force_func = force_function
         self.energy_func = energy_function
 
@@ -107,7 +108,9 @@ class BreathingSimulator(DynamicSimulator1D):
 
     @property
     def simulation_time(self):
-        return self.time_tracker
+        if self.time_array is None:
+            return np.array([])
+        return self.time_array[::self.tracking_stride]
 
     @property
     def power(self):
@@ -120,8 +123,9 @@ class HarmonicTranslationSimulator(DynamicSimulator1D):
         trap_fin: float, trap_strength: float,
         force_function: Optional[Callable] = ff.harmonic_force_const_velocity,
         energy_function: Optional[Callable] = ff.harmonic_energy_const_velocity,
+        tracking_stride: int = 10
     ):
-        super().__init__(fpe_config, trap_init, trap_fin)
+        super().__init__(fpe_config, trap_init, trap_fin, tracking_stride=tracking_stride)
         self.force_func = force_function
         self.energy_func = energy_function
         self.trap_strength = trap_strength

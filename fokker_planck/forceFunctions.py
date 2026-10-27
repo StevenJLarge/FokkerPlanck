@@ -186,16 +186,18 @@ def periodic_energy(
 def periodic_force_const_velocity(
     position: PositionData, params: InputParameters
 ) -> ForceData:
-    # TODO There should probably be a diffusion coefficient in here?
-    """Force applied to a periodic system when the potential is rotating at a
-    constant velocity. Force function is of the form:
+    """Force in a frame co-moving with a rotating periodic potential.
 
-    F(x) = - p_3 - pi * p_0 * p_1 * sin(2 * pi * p_1 * (x - p_2))
+    The conservative part matches ``periodic_force``. The extra Galilean term
+    is -v / D, as in ``harmonic_force_const_velocity`` (mobility μ = D at β = 1).
+
+    F(x) = -π p_0 p_1 sin(2 π p_1 (x - p_2)) - p_3 / p_4
 
     p_0: Height of energy barrier of potential (in units of beta = 1 / kT)
     p_1: Number of minima and maxima in a single rotation
     p_2: Phase shift, in rotations
     p_3: Velocity of rotation, in rotations / unit time
+    p_4: Diffusion coefficient
 
     Args:
         position (PositionData): System position
@@ -204,7 +206,7 @@ def periodic_force_const_velocity(
     Returns:
         ForceData: Force at each of the input position(s)
     """
-    return -params[2] - np.pi * params[0] * np.sin(2 * np.pi * (position - params[1]))
+    return periodic_force(position, params[:3]) - params[3] / params[4]
 
 
 def bistable_force(
@@ -393,6 +395,40 @@ def harmonic_energy_2D(
         EnergyData: energy as a function of the input positions
     """
     return 0.5 * (params[0][0] * ((x - params[0][1]) ** 2) + params[1][0] * ((y - params[1][1]) ** 2))
+
+
+def harmonic_force_2D_x(
+    x: PositionData, y: PositionData, params: InputParameters
+) -> ForceData:
+    """Fx for the separable 2-D harmonic energy ``harmonic_energy_2D``."""
+    return -params[0][0] * (x - params[0][1])
+
+
+def harmonic_force_2D_y(
+    x: PositionData, y: PositionData, params: InputParameters
+) -> ForceData:
+    """Fy for the separable 2-D harmonic energy ``harmonic_energy_2D``."""
+    return -params[1][0] * (y - params[1][1])
+
+
+def constant_force_2D_x(
+    x: PositionData, y: PositionData, params: InputParameters
+) -> ForceData:
+    """Constant x-force; ``params[0]`` is Fx."""
+    return params[0]
+
+
+def constant_force_2D_y(
+    x: PositionData, y: PositionData, params: InputParameters
+) -> ForceData:
+    """Constant y-force; ``params[1]`` is Fy."""
+    return params[1]
+
+
+def no_force_2D(
+    x: PositionData, y: PositionData, params: InputParameters
+) -> ForceData:
+    return np.zeros_like(np.asarray(x, dtype=float))
 
 
 def harmonic_force_z(
