@@ -1,43 +1,50 @@
-from typing import Callable, Optional, Tuple, Dict
+from typing import Callable, Optional, Tuple, Union
 import numpy as np
-import scipy
 import scipy.sparse as sp
-from scipy.sparse.linalg import inv
+from scipy.sparse.linalg import splu
+
 from fokker_planck.base import Integrator
+from fokker_planck.types.basetypes import (
+    DiffScheme, BoundaryCondition, SplitMethod
+)
+
+ForcePair = Tuple[Callable, Callable]
 
 
-# ANCHOR 2D Integrator
-class FPE_integrator_2D(Integrator):
+class FokkerPlanck2D(Integrator):
+    """2-D Fokker-Planck integrator.
+
+    Probability is stored flattened with x the fastest index (Fortran order of
+    an ``(Nx, Ny)`` grid). Diffusion uses sparse Crank-Nicolson on the 5-point
+    Laplacian. Advection uses dimensionally split Lax-Wendroff
+    (Ax(δt/2) Ay(δt) Ax(δt/2)), with the same wall / periodic / open flux
+    rules as the 1-D integrator. Advection and diffusion are then combined
+    with the parent class operator splitting.
+    """
 
     def __init__(
-        self, D: float, dt: float, dx: float, dy: float, xArray: float,
-        yArray: float, diffScheme: Optional[str] = 'crank-nicolson',
-        adScheme: Optional[str] = 'lax-wendroff',
-        boundaryCond: Optional[str] = 'hard-wall',
-        splitMethod: Optional[str] = 'strang',
-        output: Optional[bool] = False,
-        constDiff: Optional[bool] = True
+        self, D: float, dt: float, dx: float, dy: float,
+        x_array: np.ndarray, y_array: np.ndarray,
+        diff_scheme: DiffScheme = DiffScheme.CrankNicolson,
+        boundary_cond: BoundaryCondition = BoundaryCondition.HardWall,
+        split_method: SplitMethod = SplitMethod.Strang,
+        output: bool = False,
+        const_diffusion: bool = True
     ):
-
         super().__init__(
-            D, dt, diffScheme, adScheme, boundaryCond, splitMethod, output,
-            constDiff
+            D, dt, diff_scheme, boundary_cond, split_method, output,
+            const_diffusion
         )
         self.dx = dx
         self.dy = dy
- 
-        self.Nx = len(xArray)
-        self.Ny = len(yArray)
+        self.x_array = np.asarray(x_array, dtype=float)
+        self.y_array = np.asarray(y_array, dtype=float)
+        self.Nx = len(self.x_array)
+        self.Ny = len(self.y_array)
         self.N = self.Nx * self.Ny
 
-        # self.prob = np.ones((self.N,self.N))/(sum(self.Nx*self.dx)*sum(self.Ny*self.dy))
-        self.prob = np.ones(self.Nx * self.Ny) / (self.Nx * self.Ny * self.dx * self.dy)
-        self.xArray = xArray
-        self.yArray = yArray
-
-        self.constDiff = constDiff
-        self.sparTest = False
-
+        self.prob = np.ones(self.N) / (self.N * self.dx * self.dy)
+        self.init_physical_trackers()
         self.init_diffusion_matrix()
 
     @property
@@ -45,697 +52,331 @@ class FPE_integrator_2D(Integrator):
         return 2
 
     @property
-    def mean(self) -> Dict:
-        prob_grid = self.prob.reshape(self.Nx, self.Ny)
-        marginal_x = np.sum(prob_grid, axis=1) * self.dy
-        marginal_y = np.sum(prob_grid, axis=0) * self.dx
+    def prob_grid(self) -> np.ndarray:
+        return self.prob.reshape((self.Nx, self.Ny), order="F")
 
-        mean_x = np.sum(marginal_x * self.dx * self.xArray)
-        mean_y = np.sum(marginal_y * self.dy * self.yArray)
+    @prob_grid.setter
+    def prob_grid(self, grid: np.ndarray):
+        self.prob = np.asarray(grid, dtype=float).reshape(-1, order="F")
 
-        return {'x_mean': mean_x, 'y_mean': mean_y}
+    @property
+    def mean(self) -> np.ndarray:
+        grid = self.prob_grid
+        mass_elem = grid * self.dx * self.dy
+        mean_x = np.sum(mass_elem * self.x_array[:, None])
+        mean_y = np.sum(mass_elem * self.y_array[None, :])
+        return np.array([mean_x, mean_y])
 
     @property
     def covariance(self) -> np.ndarray:
-        pass
+        grid = self.prob_grid
+        mx, my = self.mean
+        dx, dy = self.dx, self.dy
+        xx = np.sum(grid * ((self.x_array[:, None] - mx) ** 2) * dx * dy)
+        yy = np.sum(grid * ((self.y_array[None, :] - my) ** 2) * dx * dy)
+        xy = np.sum(
+            grid
+            * (self.x_array[:, None] - mx)
+            * (self.y_array[None, :] - my)
+            * dx * dy
+        )
+        return np.array([[xx, xy], [xy, yy]])
 
-    def _flatten_probability(self, prob: np.ndarray):
-        pass
+    def _cell_volume(self) -> float:
+        return self.dx * self.dy
+
+    def normalize_prob(self):
+        self.prob = self.prob / (np.sum(self.prob) * self._cell_volume())
 
     def reset(
         self, covariance: Optional[np.ndarray] = None,
         mean: Optional[np.ndarray] = None
     ):
         if covariance is not None and mean is not None:
-            self.initializeProbability(mean, covariance)
+            self.initialize_probability(mean, covariance)
         else:
-            self.prob = np.ones((self.Nx, self.Ny)) / (self.Nx * self.Ny * self.dx * self.dy)
+            self.prob = np.ones(self.N) / (self.N * self._cell_volume())
         self.init_physical_trackers()
 
     def init_physical_trackers(self):
-        self.workAccumulator = 0
-        self.workTracker = []
-        self.powerTracker = []
-        self.timeTracker = []
+        self.work_accumulator = 0
+        self.work_tracker = []
+        self.power_tracker = []
+        self.time_tracker = []
+        self.flux_x = np.zeros((self.Nx, self.Ny))
+        self.flux_y = np.zeros((self.Nx, self.Ny))
+        self.flux_tracker = np.zeros(2)
 
-        self.xFlux = np.zeros(self.Nx)
-        self.yFlux = np.zeros(self.Ny)
-        self.xFluxTracker = 0
-        self.yFluxTracker = 0
+    def initialize_probability(
+        self, mean: Union[np.ndarray, Tuple[float, float]],
+        covariance: Union[np.ndarray, Tuple[float, float]]
+    ):
+        mean = np.asarray(mean, dtype=float)
+        cov = np.asarray(covariance, dtype=float)
+        if cov.shape == (2,):
+            cov = np.diag(cov)
+        X, Y = np.meshgrid(self.x_array, self.y_array, indexing="ij")
+        delta = np.stack([X - mean[0], Y - mean[1]], axis=-1)
+        inv_cov = np.linalg.inv(cov)
+        quad = np.einsum("...i,ij,...j", delta, inv_cov, delta)
+        self.prob_grid = np.exp(-0.5 * quad)
+        self.normalize_prob()
 
-    def initializeProbability(self, mean: np.ndarray, covariance: np.ndarray):
-        pass
-
-    def initializeUserProbability(
+    def initialize_user_probability(
         self, func: Callable, params: Optional[Tuple] = None
     ):
-        pass
+        X, Y = np.meshgrid(self.x_array, self.y_array, indexing="ij")
+        grid = func(X, Y, *(params or ()))
+        self.prob_grid = np.asarray(grid, dtype=float)
+        self.normalize_prob()
+
+    def _unpack_forces(
+        self, force_function: Union[Callable, ForcePair],
+        force_y: Optional[Callable] = None
+    ) -> ForcePair:
+        if force_y is not None:
+            return force_function, force_y
+        if isinstance(force_function, (tuple, list)) and len(force_function) == 2:
+            return force_function[0], force_function[1]
+        raise TypeError(
+            "2D integrator requires force_x and force_y, either as two "
+            "arguments or as a length-2 tuple"
+        )
+
+    def _eval_force(
+        self, force: Callable, x, y, params
+    ) -> np.ndarray:
+        return np.asarray(force(x, y, params), dtype=float)
+
+    def _force_fields(
+        self, force_x: Callable, force_y: Callable, params
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        X, Y = np.meshgrid(self.x_array, self.y_array, indexing="ij")
+        shape = X.shape
+        fx = np.broadcast_to(
+            np.asarray(self._eval_force(force_x, X, Y, params), dtype=float),
+            shape
+        ).copy()
+        fy = np.broadcast_to(
+            np.asarray(self._eval_force(force_y, X, Y, params), dtype=float),
+            shape
+        ).copy()
+        return fx, fy
+
+    def check_CFL(
+        self, force_params: Tuple, force_function: Union[Callable, ForcePair],
+        force_y: Optional[Callable] = None
+    ) -> bool:
+        force_x, force_y = self._unpack_forces(force_function, force_y)
+        fx, fy = self._force_fields(force_x, force_y, force_params)
+        cfl_x = np.max(np.abs(fx)) * self.D * self.dt / self.dx
+        cfl_y = np.max(np.abs(fy)) * self.D * self.dt / self.dy
+        self.CFL = float(max(cfl_x, cfl_y))
+        if self.CFL > 1.0:
+            if self.output:
+                print(f"\t\tStability warning, invalid CFL --> {self.CFL}\n")
+            return False
+        return True
+
+    def integrate_step(
+        self, force_params: Tuple, force_function: Union[Callable, ForcePair],
+        force_y: Optional[Callable] = None
+    ):
+        forces = self._unpack_forces(force_function, force_y)
+        super().integrate_step(force_params, forces)
+
+    def advection_update(
+        self, force_params: Tuple, force_function: Union[Callable, ForcePair],
+        delta_t: float
+    ):
+        self.lax_wendroff(force_params, force_function, delta_t)
+
+    def diffusion_update(self):
+        rhs = self.BMat.dot(self.prob)
+        self.prob = self._A_factor.solve(rhs)
 
     def init_diffusion_matrix(self):
-        if(self.output is True):
-            print("\n\nInitializing diffusion term integration matrix...\n")
-
         self._setDiffusionScheme()
+        theta = self.exp_imp
+        alpha_x = self.D * self.dt / (self.dx * self.dx)
+        alpha_y = self.D * self.dt / (self.dy * self.dy)
 
-        if(self.output is True):
-            print("\t\tInitializing integration matrices for diffusion\n")
+        A = sp.lil_matrix((self.N, self.N))
+        B = sp.lil_matrix((self.N, self.N))
 
-        alpha = self.D * self.dt / (self.dx * self.dx)
-
-        self.AMat = sp.lil_matrix((self.N, self.N))
-        self.BMat = sp.lil_matrix((self.N, self.N))
-
-        # Bulk term initializations
-        self.AMat.setdiag(1 + 4 * alpha * self.exp_imp)
-        self.AMat.setdiag(-1 * self.exp_imp * alpha, k=1)
-        self.AMat.setdiag(-1 * self.exp_imp * alpha, k=-1)
-        self.AMat.setdiag(-1 * self.exp_imp * alpha, k=self.Nx)
-        self.AMat.setdiag(-1 * self.exp_imp * alpha, k=-self.Nx)
-
-        self.BMat.setdiag(1 - 4 * alpha * (1 - self.exp_imp))
-        self.BMat.setdiag(alpha * (1 - self.exp_imp), k=1)
-        self.BMat.setdiag(alpha * (1 - self.exp_imp), k=-1)
-        self.BMat.setdiag(alpha * (1 - self.exp_imp), k=self.Nx)
-        self.BMat.setdiag(alpha * (1 - self.exp_imp), k=-self.Nx)
-
-        self._initializeBoundaryTerms(alpha)
-
-        # convert to csc format
-        self.AMat = self.AMat.tocsc()
-        self.BMat = self.BMat.tocsc()
-
-        self.CMat = inv(self.AMat).dot(self.BMat)
-
-    def _initializeBoundaryTerms(self, alpha: float):
-        self._matrixBoundary_A(alpha, 0)
-        self._matrixBoundary_B(alpha, 0)
-
-        self._matrixBoundary_A(alpha, self.Nx - 1)
-        self._matrixBoundary_B(alpha, self.Nx - 1)
-
-    def _matrixBoundary_A(self, alpha: float, idx: int):
-        if self.BC == 'periodic':
-            # x-dimension BCs
-
-            # Need to place top right and bottom left elements in each block
-            # matrix for X and Y directions
-            for image in range(0, self.Ny):
-                x_idx = idx + self.Nx * image
-                y_idx_fw = (idx + 1) % self.Nx + self.Nx * image
-                y_idx_rv = (idx - 1) % self.Nx + self.Nx * image
-
-                self.AMat[x_idx, y_idx_fw] = -self.exp_imp * alpha
-                self.AMat[x_idx, y_idx_rv] = -self.exp_imp * alpha
-
-            for image in range(1, self.Ny):
-                self.AMat[image * self.Nx - 1, image * self.Nx] = 0
-                self.AMat[image * self.Nx, image * self.Nx - 1] = 0
-
-            # y-dimension BCs
-            self.AMat.setdiag(-self.exp_imp * alpha, k=self.N - self.Nx)
-            self.AMat.setdiag(-self.exp_imp * alpha, k=-(self.N - self.Nx))
-
-        elif self.BC == "hard-wall":
-            # This resolves the HW conditions in the X-dimension, still need
-            # to resolve in y
-            # NOTE Need to update this, I aded the 8, but I need to figure out
-            # where the 4 goes and make sure the 2s are right, as well as
-            # resolve the multi-coordinate boundaries,..
-
-            # Set necessary elemetns to zero
-            for image in range(1, self.Ny):
-                self.AMat[image * self.Nx - 1, image * self.Nx] = 0
-                self.AMat[image * self.Nx, image * self.Nx - 1] = 0
-
-            # NOTE THIS IS INCORRECT....
-            # X-boundaries only
-            # Loop over all y values corresponding to the X at idx, which is
-            # y = 1 --> N_y - 2
-            for image in range(1, self.Ny - 1):
-                row_idx_top = image * self.Nx
-                row_idx_bot = (image + 1) * self.Nx - 1
-
-                self.AMat[row_idx_top, row_idx_top] = 1 + 4 * alpha
-                self.AMat[row_idx_bot, row_idx_bot] = 1 + 4 * alpha
-
-                self.AMat[row_idx_top, row_idx_top + 1] = -2 * alpha
-                self.AMat[row_idx_top, row_idx_top + self.Nx] = -1 * alpha
-                self.AMat[row_idx_top, row_idx_top - self.Nx] = -1 * alpha
-
-                self.AMat[row_idx_bot, row_idx_bot - 1] = -2 * alpha
-                self.AMat[row_idx_bot, row_idx_bot + self.Nx] = -1 * alpha
-                self.AMat[row_idx_bot, row_idx_bot - self.Nx] = -1 * alpha
-
-            # Y-boundaries only
-            for image in range(1, self.Nx - 1):
-                row_idx_top = image
-                row_idx_bot = image + (self.Ny - 1) * self.Nx
-
-                self.AMat[row_idx_top, row_idx_top] = 1 + 4 * alpha
-                self.AMat[row_idx_bot, row_idx_bot] = 1 + 4 * alpha
-
-                self.AMat[row_idx_top, row_idx_top + 1] = -1 * alpha
-                self.AMat[row_idx_top, row_idx_top - 1] = -1 * alpha
-                self.AMat[row_idx_top, row_idx_top + self.Nx] = -2 * alpha
-
-                self.AMat[row_idx_bot, row_idx_bot + 1] = -1 * alpha
-                self.AMat[row_idx_bot, row_idx_bot - 1] = -1 * alpha
-                self.AMat[row_idx_bot, row_idx_bot - self.Nx] = -2 * alpha
-
-            # Corner boundaries
-            row_idx_00 = 0
-            row_idx_N0 = self.Nx - 1
-            row_idx_0N = (self.Ny - 1) * self.Nx
-            row_idx_NN = (self.Ny * self.Nx) - 1
-
-            self.AMat[row_idx_00, row_idx_00] = 1 + 4 * alpha
-            self.AMat[row_idx_00, row_idx_00 + 1] = -2 * alpha
-            self.AMat[row_idx_00, row_idx_00 + self.Nx] = -2 * alpha
-
-            self.AMat[row_idx_N0, row_idx_N0] = 1 + 4 * alpha
-            self.AMat[row_idx_N0, row_idx_N0 - 1] = -2 * alpha
-            self.AMat[row_idx_N0, row_idx_N0 + self.Nx] = -2 * alpha
-
-            self.AMat[row_idx_0N, row_idx_0N] = 1 + 4 * alpha
-            self.AMat[row_idx_0N, row_idx_0N + 1] = -2 * alpha
-            self.AMat[row_idx_0N, row_idx_0N - self.Nx] = -2 * alpha
-
-            self.AMat[row_idx_NN, row_idx_NN] = 1 + 4 * alpha
-            self.AMat[row_idx_NN, row_idx_NN - 1] = -2 * alpha
-            self.AMat[row_idx_NN, row_idx_NN - self.Nx] = -2 * alpha
-
-        elif self.BC == "open":
-            for image in range(1, self.Ny):
-                self.AMat[image * self.Nx - 1, image * self.Nx] = 0
-                self.AMat[image * self.Nx, image * self.Nx - 1] = 0
-
-        else:
-            raise ValueError(
-                f"Invalid boundary condition `{self.BC}`, cannot resolve "
-                "diffusion matrix A"
-            )
-
-    def _matrixBoundary_B(self, alpha: float, idx: int):
-
-        if self.BC == "periodic":
-            # x-dimension BCs
-            for image in range(0, self.Ny):
-                x_idx = idx + self.Nx * image
-                y_idx_fw = (idx + 1) % self.Nx + self.Nx * image
-                y_idx_rv = (idx - 1) % self.Nx + self.Nx * image
-
-                self.BMat[x_idx, y_idx_fw] = alpha * (1 - self.exp_imp)
-                self.BMat[x_idx, y_idx_rv] = alpha * (1 - self.exp_imp)
-
-            for image in range(1, self.Ny):
-                self.BMat[image * self.Nx - 1, image * self.Nx] = 0
-                self.BMat[image * self.Nx, image * self.Nx - 1] = 0
-
-            # y-dimension BCs
-            self.BMat.setdiag(alpha * (1 - self.exp_imp), k=self.N - self.Nx)
-            self.BMat.setdiag(alpha * (1 - self.exp_imp), k=-(self.N - self.Nx))
-
-        elif self.BC == "hard-wall":
-            # for image in range(0, self.Ny):
-            #     _idx = idx + self.Nx * image
-            #     self.BMat[_idx, _idx] = 1
-            #     self.BMat[_idx, abs(idx - 1) + self.Nx * image] = 0
-
-            for image in range(1, self.Ny):
-                self.BMat[image * self.Nx - 1, image * self.Nx] = 0
-                self.BMat[image * self.Nx, image * self.Nx - 1] = 0
-
-            # for image in range(1, self.Ny):
-            #     self.BMat[image * self.Nx - 1, image * self.Nx] = 0
-            #     self.BMat[image * self.Nx, image * self.Nx - 1] = 0
-
-            # for diag_idx in range(self.Nx):
-            #     self.BMat[diag_idx, self.Nx + diag_idx] = 0
-            #     self.BMat[self.N - 1 - diag_idx, self.N - self.Nx - 1 - diag_idx] = 0
-
-            for image in range(1, self.Ny - 1):
-                row_idx_top = image * self.Nx
-                row_idx_bot = (image + 1) * self.Nx - 1
-
-                self.BMat[row_idx_top, row_idx_top] = 1
-                self.BMat[row_idx_bot, row_idx_bot] = 1
-
-                self.BMat[row_idx_top, row_idx_top + 1] = 0
-                self.BMat[row_idx_top, row_idx_top + self.Nx] = 0
-                self.BMat[row_idx_top, row_idx_top - self.Nx] = 0
-
-                self.BMat[row_idx_bot, row_idx_bot - 1] = 0
-                self.BMat[row_idx_bot, row_idx_bot + self.Nx] = 0
-                self.BMat[row_idx_bot, row_idx_bot - self.Nx] = 0
-
-            # Y-boundaries only
-            for image in range(1, self.Nx - 1):
-                row_idx_top = image
-                row_idx_bot = image + (self.Ny - 1) * self.Nx
-
-                self.BMat[row_idx_top, row_idx_top] = 1
-                self.BMat[row_idx_bot, row_idx_bot] = 1
-
-                self.BMat[row_idx_top, row_idx_top + 1] = 0
-                self.BMat[row_idx_top, row_idx_top - 1] = 0
-                self.BMat[row_idx_top, row_idx_top + self.Nx] = 0
-
-                self.BMat[row_idx_bot, row_idx_bot + 1] = 0
-                self.BMat[row_idx_bot, row_idx_bot - 1] = 0
-                self.BMat[row_idx_bot, row_idx_bot - self.Nx] = 0
-
-            # Corner boundaries
-            row_idx_00 = 0
-            row_idx_N0 = self.Nx - 1
-            row_idx_0N = (self.Ny - 1) * self.Nx
-            row_idx_NN = (self.Ny * self.Nx) - 1
-
-            self.BMat[row_idx_00, row_idx_00] = 1
-            self.BMat[row_idx_00, row_idx_00 + 1] = 0
-            self.BMat[row_idx_00, row_idx_00 + self.Nx] = 0
-
-            self.BMat[row_idx_N0, row_idx_N0] = 1
-            self.BMat[row_idx_N0, row_idx_N0 - 1] = 0
-            self.BMat[row_idx_N0, row_idx_N0 + self.Nx] = 0
-
-            self.BMat[row_idx_0N, row_idx_0N] = 1
-            self.BMat[row_idx_0N, row_idx_0N + 1] = 0
-            self.BMat[row_idx_0N, row_idx_0N - self.Nx] = 0
-
-            self.BMat[row_idx_NN, row_idx_NN] = 1
-            self.BMat[row_idx_NN, row_idx_NN - 1] = 0
-            self.BMat[row_idx_NN, row_idx_NN - self.Nx] = 0
-
-        elif self.BC == "open":
-            for image in range(1, self.Ny):
-                self.BMat[image * self.Nx - 1, image * self.Nx] = 0
-                self.BMat[image * self.Nx, image * self.Nx - 1] = 0
-
-        else:
-            raise ValueError(
-                f"Invalid boundary condition {self.BC}, cannot resolve "
-                "diffusion matrix B"
-            )
-
-    def _get_col_idx(self, x_idx: int, y_idx: int) -> int:
-        return x_idx + (y_idx * self.Ny)
-
-    # ANCHOR need to update function signature
-    def work_step(self):
-        pass
-
-    def flux_step(self):
-        pass
-
-    # TODO Migrate this to the base class
-    def integrate_step(
-        self, forceParams: Tuple, forceFunction_x: Callable,
-        forceFunction_y: Callable
-    ):
-        if(self.split_method == 'lie'):
-            self.advection_update(
-                forceParams, forceFunction_x, forceFunction_y, self.dt
-            )
-            self.diffusion_update()
-
-        elif(self.split_method == 'strang'):
-            self.advection_update(
-                forceParams, forceFunction_x, forceFunction_y, 0.5 * self.dt
-            )
-            self.diffusion_update()
-            self.advection_update(
-                forceParams, forceFunction_x, forceFunction_y, 0.5 * self.dt
-            )
-
-        elif(self.split_method == 'swss'):
-            initProb = self.prob
-            self.advection_update(
-                forceParams, forceFunction_x, forceFunction_y, self.dt
-            )
-            self.diffusion_update()
-            prob_1 = self.prob
-            self.prob = initProb
-            self.diffusion_update()
-            self.advection_update(
-                forceParams, forceFunction_x, forceFunction_y, self.dt
-            )
-            prob_2 = self.prob
-            self.prob = 0.5*(prob_1 + prob_2)
-
-        else:
-            # Symmetric Strang splitting is the default choice
-            self.advection_update(
-                forceParams, forceFunction_x, forceFunction_y, 0.5 * self.dt
-            )
-            self.diffusion_update()
-            self.advection_update(
-                forceParams, forceFunction_x, forceFunction_y, 0.5 * self.dt
-            )
-
-    # TODO Keep this in the base class
-    def diffusion_update(self):
-        if (self.constDiff is True):
-            self.prob = self.CMat.dot(self.prob)
-        else:
-            bVec = self.BMat.dot(self.prob)
-            self.prob = scipy.sparse.linalg.spsolve(self.AMat, bVec)
-
-    # TODO Also put this in the base class
-    def advection_update(
-        self, forceParams: Tuple, forceFunc_x: Callable, forceFunc_y: Callable,
-        deltaT: float
-    ):
-        # if(self.adScheme=='lax-wendroff' or self.adScheme=='lw'):
-        #    self.laxWendroff(forceParams,forceFunction,deltaT)
-        # if(self.adScheme=='lax' or self.adScheme=='l'):
-        #    self.lax(forceParams,forceFunction,deltaT)
-        # if(self.adScheme=='lax-ds' or self.adScheme=='lds'):
-        #    self.lax_dimSplit(forceParams,forceFunction,deltaT)
-        # else:
-        #   self.laxWendroff(forceParams,forceFunction,deltaT)
-        #   self.lax_dimSplit(forceParams,forceFunction,deltaT)
-        # self.laxWendroff_lieSplit_leg(forceFunc_x, forceFunc_y, forceParams, deltaT)
-        pass
-
-    # Probably just stick with LW for this? Just need to get it working...
-    def lax_leg(self, forceParams: Tuple, forceFunction: Callable, deltaT: float):
-        # TODO TEST LAX METHOD
-        """
-        This function updates the 2D probability density function using the 2-D lax-step method
-        current implementation only uses PBCs
-        """
-        alpha = deltaT / (2 * self.dx)
-        prob_mat = np.reshape(self.prob, (self.Nx, self.Ny))
-        newProb = np.zeros_like(prob_mat)
-
-        # First resolve 'bulk coordinates', '-2' counter means we want to evaluate boudary conditions separately
-        for i in range(self.Nx - 2):
-            for j in range(self.Ny - 2):
-                # First calculate local average of NN probabilities
-                newProb[i+1, j+1] = 0.25 * (
-                    prob_mat[i+2, j+1] + prob_mat[i, j+1] + prob_mat[i+1, j+2] + prob_mat[i+1, j]
-                )
-                # Then calculate the forces
-                newProb[i+1, j+1] -= alpha * (
-                    forceFunction(self.xArray[i+2], self.yArray[j+1], forceParams, flag="x") * prob_mat[i+2, j+1] -
-                    forceFunction(self.xArray[i], self.yArray[j+1], forceParams, flag="x") * prob_mat[i, j+1] +
-                    forceFunction(self.xArray[i+1], self.yArray[j+2], forceParams, flag="y") * prob_mat[i+1, j+2] -
-                    forceFunction(self.xArray[i+1], self.yArray[j], forceParams, flag="y") * prob_mat[i+1, j]
-                )
-
-        # Implement PBCs on boundary nodes
-        # NOTE In this form, the 'corner boundaries' (where both x and y have simultaneous boudaries) are
-        # double-counted, but this should only be ~2 lines per call
         for j in range(self.Ny):
-            # Boundary conditions on 'x = 0' nodes
-            newProb[0, j] = 0.25 * (
-                prob_mat[1, j] + prob_mat[-1, j] + prob_mat[0, (j - 1) % self.Ny] + prob_mat[0, (j + 1) % self.Ny]
-            )
-            newProb[0, j] -= alpha * (
-                forceFunction(self.xArray[1], self.yArray[j], forceParams, flag="x")
-                * prob_mat[1, j]
-                - forceFunction(self.xArray[-1], self.yArray[j], forceParams, flag="x")
-                * prob_mat[-1, j]
-                + forceFunction(self.xArray[0], self.yArray[(j + 1) % self.Ny], forceParams, flag="y")
-                * prob_mat[0, (j + 1) % self.Ny]
-                - forceFunction(self.xArray[0], self.yArray[(j - 1) % self.Ny], forceParams, flag="y")
-                * prob_mat[0, (j - 1) % self.Ny]
-            )
+            for i in range(self.Nx):
+                row = i + j * self.Nx
+                A[row, row] += 1.0
+                B[row, row] += 1.0
+                self._add_axis_terms(
+                    A, B, row, i, j, axis="x",
+                    alpha=alpha_x, theta=theta
+                )
+                self._add_axis_terms(
+                    A, B, row, i, j, axis="y",
+                    alpha=alpha_y, theta=theta
+                )
 
-            # Boundary conditions on 'x = Nx' nodes
-            newProb[-1, j] = 0.25 * (
-                prob_mat[0, j] + prob_mat[-2, j] + prob_mat[-1, (j - 1) % self.Ny] + prob_mat[-1, (j + 1) % self.Ny]
-            )
-            newProb[-1, j] -= alpha * (
-                forceFunction(self.xArray[0], self.yArray[j], forceParams, flag="x")
-                * prob_mat[0, j]
-                - forceFunction(self.xArray[-2], self.yArray[j], forceParams, flag="x")
-                * prob_mat[-2, j]
-                + forceFunction(self.xArray[-1], self.yArray[(j + 1) % self.Ny], forceParams, flag="y")
-                * prob_mat[-1, (j + 1) % self.Ny]
-                - forceFunction(self.xArray[-1], self.yArray[(j - 1) % self.Ny], forceParams, flag="y")
-                * prob_mat[-1, (j - 1) % self.Ny]
-            )
+        self.AMat = A.tocsc()
+        self.BMat = B.tocsc()
+        self._A_factor = splu(self.AMat)
+        self.sparse_calc = True
 
-        for i in range(self.Nx):
-            # Boundary conditions on 'y = 0' nodes
-            newProb[i, 0] = 0.25 * (
-                prob_mat[i, 1] + prob_mat[i, -1] + prob_mat[(i + 1) % self.Nx, 0] + prob_mat[(i - 1) % self.Nx, 0]
-            )
-            newProb[i, 0] -= alpha * (
-                forceFunction(self.xArray[i], self.yArray[1], forceParams, flag="y")
-                * prob_mat[i, 1]
-                - forceFunction(self.xArray[i], self.yArray[-1], forceParams, flag="y")
-                * prob_mat[i, -1]
-                + forceFunction(self.xArray[(i + 1) % self.Nx], self.yArray[0], forceParams, flag="x")
-                * prob_mat[(i + 1) % self.Nx, 0]
-                - forceFunction(self.xArray[(i - 1) % self.Nx], self.yArray[0], forceParams, flag="x")
-                * prob_mat[(i - 1) % self.Nx, 0]
-            )
-
-            # Boundary conditions on 'y = Ny' nodes
-            newProb[i, -1] = 0.25 * (
-                prob_mat[i, 0] + prob_mat[i, -2] + prob_mat[(i + 1) % self.Nx, -1] + prob_mat[(i - 1) % self.Nx, -1]
-            )
-            newProb[i, -1] -= alpha * (
-                forceFunction(self.xArray[i], self.yArray[0], forceParams, flag="y")
-                * prob_mat[i, 0]
-                - forceFunction(self.xArray[i], self.yArray[-2], forceParams, flag="y")
-                * prob_mat[i, -2]
-                + forceFunction(self.xArray[(i + 1) % self.Nx], self.yArray[-1], forceParams, flag="x")
-                * prob_mat[(i + 1) % self.Nx, -1]
-                - forceFunction(self.yArray[(i - 1) % self.Nx], self.yArray[-1], forceParams, flag="x")
-                * prob_mat[(i - 1) % self.Nx, -1]
-            )
-
-        # Flatten matrix probability and reform it into a single vector
-        self.prob = np.reshape(newProb, (self.Nx * self.Ny))
-
-    def lax_lieSplit_leg(
-        self, forceFunc_x: Callable, forceFunc_y: Callable, forceParams: Tuple,
-        deltaT: float
+    def _add_axis_terms(
+        self, A, B, row: int, i: int, j: int, axis: str,
+        alpha: float, theta: float
     ):
-        """
-        This function implements a Lax update of the 2D probability distribution based on a Lie dimensional splitting
-        """
-        # First cast the probabbility to a matrix shape
-        prob_mat = np.reshape(self.prob, (self.Nx, self.Ny))
-        newProb = np.zeros_like(prob_mat)
+        if axis == "x":
+            idx, n = i, self.Nx
+            minus_col = (i - 1) + j * self.Nx
+            plus_col = (i + 1) + j * self.Nx
+            wrap_minus = (n - 1) + j * self.Nx
+            wrap_plus = 0 + j * self.Nx
+        else:
+            idx, n = j, self.Ny
+            minus_col = i + (j - 1) * self.Nx
+            plus_col = i + (j + 1) * self.Nx
+            wrap_minus = i + (n - 1) * self.Nx
+            wrap_plus = i + 0 * self.Nx
 
-        # tempdt = self.dt
-        self.dt = deltaT
+        at_lo = idx == 0
+        at_hi = idx == n - 1
+        one_m = 1.0 - theta
 
-        par_x = forceParams[0]
-        par_y = forceParams[1]
+        if self.BC is BoundaryCondition.Periodic:
+            A[row, row] += 2.0 * theta * alpha
+            A[row, wrap_minus if at_lo else minus_col] += -theta * alpha
+            A[row, wrap_plus if at_hi else plus_col] += -theta * alpha
+            B[row, row] += -2.0 * one_m * alpha
+            B[row, wrap_minus if at_lo else minus_col] += one_m * alpha
+            B[row, wrap_plus if at_hi else plus_col] += one_m * alpha
+            return
 
-        # Now, update the X dimension using the Lax scheme
-        for i in range(self.Nx - 1):
-            for j in range(self.Ny):
-                newProb[i+1, j] = (
-                    0.5 * (prob_mat[i + 2, j] + prob_mat[i, j])
-                    - (self.dt / (2 * self.dx)) * (
-                        forceFunc_x(self.xArray[i + 2], self.yArray[j], par_x)
-                        * prob_mat[i + 2, j]
-                        - forceFunc_x(self.xArray[i], self.yArray[j], par_x)
-                        * prob_mat[i, j]
-                    )
-                )
+        if self.BC is BoundaryCondition.HardWall and (at_lo or at_hi):
+            # Finite-volume no-flux: only the interior face contributes,
+            # L_wall = (p_interior - p_wall) / dz^2
+            A[row, row] += theta * alpha
+            B[row, row] += -one_m * alpha
+            neigh = plus_col if at_lo else minus_col
+            A[row, neigh] += -theta * alpha
+            B[row, neigh] += one_m * alpha
+            return
 
-        # TODO: Implement hard wall and open BCS here (and for y-coordinate below)
-        # Resolve periodic boundary conditions along the x=0 and x=N boundaries
-        for j in range(self.Ny):
-            newProb[0, j] = (
-                0.5 * (prob_mat[1, j] + prob_mat[-1, j])
-                - (self.dt / (2 * self.dx)) * (
-                    forceFunc_x(self.xArray[1], self.yArray[j], par_x)
-                    * prob_mat[1, j]
-                    - forceFunc_x(self.xArray[-1], self.yArray[j], par_x)
-                    * prob_mat[-1, j]
-                )
-            )
-            newProb[-1, j] = (
-                0.5 * (prob_mat[0, j] + prob_mat[-2, j])
-                - (self.dt / (2 * self.dx)) * (
-                    forceFunc_x(self.xArray[0], self.yArray[j], par_x)
-                    * prob_mat[0, j]
-                    - forceFunc_x(self.xArray[-2], self.yArray[j], par_x)
-                    * prob_mat[-2, j]
-                )
-            )
+        # Interior, or Open (missing neighbour treated as p=0)
+        A[row, row] += 2.0 * theta * alpha
+        B[row, row] += -2.0 * one_m * alpha
+        if not at_lo:
+            A[row, minus_col] += -theta * alpha
+            B[row, minus_col] += one_m * alpha
+        if not at_hi:
+            A[row, plus_col] += -theta * alpha
+            B[row, plus_col] += one_m * alpha
 
-        # Now, update the y-coordinate using the Lax scheme
-        for i in range(self.Nx):
-            for j in range(self.Ny - 1):
-                prob_mat[i, j+1] = (
-                    0.5 * (newProb[i, j+2] + newProb[i, j])
-                    - (self.dt / (2 * self.dy)) * (
-                        forceFunc_y(self.xArray[i], self.yArray[j+2], par_y)
-                        * newProb[i, j+2]
-                        - forceFunc_y(self.xArray[i], self.yArray[j], par_y)
-                        * newProb[i, j]
-                    )
-                )
-
-        # Resolve periodic boundary conditions along the y=0 and y=N boundaries
-        for i in range(self.Ny):
-            prob_mat[i, 0] = (
-                0.5 * (newProb[i, 1] + newProb[i, -1])
-                - (self.dt / (2 * self.dy)) * (
-                    forceFunc_y(self.xArray[i], self.yArray[1], par_y)
-                    * newProb[i, 1]
-                    - forceFunc_y(self.xArray[i], self.yArray[-1], par_y)
-                    * self.newProb[i, -1]
-                )
-            )
-
-            prob_mat[i, -1] = (
-                0.5 * (newProb[i, 0] + newProb[i, -2])
-                - (self.dt / (2 * self.dy)) * (
-                    forceFunc_y(self.xArray[i], self.yArray[0], par_y)
-                    * newProb[i, 0]
-                    - forceFunc_y(self.xArray[i], self.yArray[-2], par_y)
-                    * self.newProb[i, -2]
-                )
-            )
-
-        # Update the probability vector
-        self.prob = np.reshape(prob_mat, self.Nx * self.Ny)
-
-        # tempdt = self.dt
-        self.dt = deltaT
-
-    def laxWendroff_lieSplit_leg(
-        self, forceFunc_x: Callable, forceFunc_y: Callable, forceParams: Tuple,
-        deltaT: float
+    def lax_wendroff(
+        self, force_params: Tuple,
+        force_function: Union[Callable, ForcePair],
+        delta_t: float
     ):
-        """
-        This function performs an update on the advection term based on the
-        Lax-Wendroff scheme for a 2D-diffusion, here the forceFunc_x and and
-        ForceFunc_y are functions quantifying the force given a 2-D coordinate
-        (x,y) and forceparams contains the individual parameters
-        [[xParams],[yParams]] for the x and y force functions
-        """
+        force_x, force_y = self._unpack_forces(force_function)
+        grid = self.prob_grid
+        # Dimensional Strang split so the advection substep stays second order
+        grid = self._lax_wendroff_axis(grid, force_x, force_params, 0.5 * delta_t, axis=0)
+        grid = self._lax_wendroff_axis(grid, force_y, force_params, delta_t, axis=1)
+        grid = self._lax_wendroff_axis(grid, force_x, force_params, 0.5 * delta_t, axis=0)
+        self.prob_grid = grid
 
-        # first shape probability into a matrix and declare two temporary matrices
-        prob_mat = np.reshape(self.prob, (self.Nx, self.Ny))
-        halfStep = np.zeros_like(prob_mat)
-        probStar = np.zeros_like(prob_mat)
+    def _lax_wendroff_axis(
+        self, grid: np.ndarray, force: Callable, params, delta_t: float,
+        axis: int
+    ) -> np.ndarray:
+        if axis == 0:
+            dz = self.dx
+            Xc, Yc = np.meshgrid(self.x_array, self.y_array, indexing="ij")
+            faces = np.empty(self.Nx + 1)
+            faces[0] = self.x_array[0] - 0.5 * self.dx
+            faces[1:] = self.x_array + 0.5 * self.dx
+            Xf, Yf = np.meshgrid(faces, self.y_array, indexing="ij")
+        else:
+            dz = self.dy
+            Xc, Yc = np.meshgrid(self.x_array, self.y_array, indexing="ij")
+            faces = np.empty(self.Ny + 1)
+            faces[0] = self.y_array[0] - 0.5 * self.dy
+            faces[1:] = self.y_array + 0.5 * self.dy
+            Xf, Yf = np.meshgrid(self.x_array, faces, indexing="ij")
 
-        tempdt = self.dt
-        self.dt = deltaT
+        F = np.broadcast_to(
+            np.asarray(self._eval_force(force, Xc, Yc, params), dtype=float),
+            grid.shape
+        )
+        Fh_shape = (self.Nx + 1, self.Ny) if axis == 0 else (self.Nx, self.Ny + 1)
+        Fh = np.broadcast_to(
+            np.asarray(self._eval_force(force, Xf, Yf, params), dtype=float),
+            Fh_shape
+        )
 
-        par_x = forceParams[0]
-        par_y = forceParams[1]
+        p = np.moveaxis(grid, axis, 0)
+        F = np.moveaxis(np.array(F, dtype=float, copy=True), axis, 0)
+        Fh = np.moveaxis(np.array(Fh, dtype=float, copy=True), axis, 0)
+        n = p.shape[0]
+        coeff = self.D * delta_t / dz
 
-        # First calculate the x-update
+        half_p = np.zeros((n + 1,) + p.shape[1:])
+        half_flux = np.zeros_like(half_p)
 
-        # Calculate half-step probabilities
-        # NOTE: Updated modular calculation in arrays, should incorporate PBCS into this line
-        # for i in range(self.Nx-1)
-        for i in range(self.Nx):
-            for j in range(self.Ny):
-                halfStep[i, j] = (
-                    0.5 * (prob_mat[(i + 1) % self.Nx, j] + prob_mat[i, j])
-                    - (self.dt / (2 * self.dx)) * (
-                        forceFunc_x(self.xArray[(i + 1) % self.Nx], self.yArray[j], par_x)
-                        * prob_mat[(i + 1) % self.Nx, j]
-                        - forceFunc_x(self.xArray[i], self.yArray[j], par_x)
-                        * prob_mat[i, j]
-                    )
-                )
+        half_p[1:-1] = (
+            0.5 * (p[1:] + p[:-1])
+            - 0.5 * coeff * (F[1:] * p[1:] - F[:-1] * p[:-1])
+        )
+        half_flux[1:-1] = Fh[1:-1] * half_p[1:-1]
 
-        # TODO: Implement hard wall and open boundary conditions for this
-        # Resolve periodic boundaries for the half-step probabilities along the x=Nx boundary
-        # for j in range(self.Ny):
-        #    halfStep[-1,j] = 0.5*(prob_mat[0,j] + prob_mat[-1,j]) -
-        # (self.dt/(2*self.dx))*(forceFunc_x(self.xArray[0],self.yArray[j],par_x)*prob_mat[0,j] -
-        # forceFunc_x(self.xArray[-1],self.yArray[j],par_x)*prob_mat[-1,j])
+        if self.BC is BoundaryCondition.Periodic:
+            wrap = 0.5 * coeff * (F[0] * p[0] - F[-1] * p[-1])
+            half_p[0] = 0.5 * (p[0] + p[-1]) - wrap
+            half_flux[0] = Fh[0] * half_p[0]
+            half_flux[-1] = half_flux[0]
+        elif self.BC is BoundaryCondition.Open:
+            half_p[0] = 0.5 * p[0] - 0.5 * coeff * F[0] * p[0]
+            half_p[-1] = 0.5 * p[-1] + 0.5 * coeff * F[-1] * p[-1]
+            half_flux[0] = Fh[0] * half_p[0]
+            half_flux[-1] = Fh[-1] * half_p[-1]
+        else:
+            half_flux[0] = 0.0
+            half_flux[-1] = 0.0
 
-        # Now update the probabilities in the x-direction based on the half-step fluxes
-        # for i in range(self.Nx-1):
-        for i in range(self.Nx):
-            for j in range(self.Ny):
-                probStar[(i + 1) % self.Nx, j] = (
-                    prob_mat[(i + 1) % self.Nx, j]
-                    - (self.dt / self.dx) * (
-                        forceFunc_x(self.xArray[(i + 1) % self.Nx] + 0.5 * self.dx, self.yArray[j], par_x)
-                        * halfStep[(i + 1) % self.Nx, j]
-                        - forceFunc_x(self.xArray[i] + 0.5 * self.dx, self.yArray[j], par_x) * halfStep[i, j]
-                    )
-                )
+        new_p = p - coeff * (half_flux[1:] - half_flux[:-1])
+        return np.moveaxis(new_p, 0, axis)
 
-        # And resolve the periodic boundary conditions on the x-updates
-        # for j in range(self.Ny):
-        #    probStar[0,j] = prob_mat[0,j] - (self.dt/self.dx)*(forceFunc_x(self.xArray[0]+
-        # 0.5*self.dx,self.yArray[j],par_x)*halfStep[0,j] - forceFunc_x(self.xArray[-1]+0.5*self.dx,
-        # self.yArray[j],par_x)*halfStep[-1,j])
+    def work_step(
+        self, force_params_pre: Tuple, force_params_post: Tuple,
+        force_x: Callable, force_y: Callable, energy_function: Callable
+    ):
+        X, Y = np.meshgrid(self.x_array, self.y_array, indexing="ij")
+        grid = self.prob_grid
+        vol = self._cell_volume()
+        curr_energy = np.sum(energy_function(X, Y, force_params_pre) * grid) * vol
+        new_energy = np.sum(energy_function(X, Y, force_params_post) * grid) * vol
 
-        # Now perform the Y-updates on the probStar distribution
-        # first calculate the half-step probabilities
-        for i in range(self.Nx):
-            # for j in range(self.Ny-1):
-            for j in range(self.Ny):
-                halfStep[i, j] = (
-                    0.5 * (probStar[i, (j + 1) % self.Ny] + probStar[i, j])
-                    - (self.dt / (2 * self.dy)) * (
-                        forceFunc_y(self.xArray[i], self.yArray[(j + 1) % self.Ny], par_y)
-                        * probStar[i, (j + 1) % self.Ny]
-                        - forceFunc_y(self.xArray[i], self.yArray[j], par_y)
-                        * probStar[i, j]
-                    )
-                )
+        self.integrate_step(force_params_post, force_x, force_y)
 
-        # Resolve the periodic boundaries for the half-step updates based on the y=Ny boundary
-        # for i in range(self.Nx):
-        #    halfStep[i,-1] = 0.5*(probStar[i,0] + probStar[i,-1]) - (self.dt/(2*self.dy))*
-        # (forceFunc_y(self.xArray[i],self.yArray[0],par_y)*probStar[i,0] -
-        # forceFunc_y(self.xArray[i],self.yArray[-1],par_y)*probStar[i,-1])
+        self.work_accumulator += new_energy - curr_energy
+        self.work_tracker.append(self.work_accumulator)
+        self.power_tracker.append((new_energy - curr_energy) / self.dt)
 
-        # Now update the probability distribution based on the half-step fluxes
-        for i in range(self.Nx):
-            # for j in range(self.Ny-1):
-            for j in range(self.Ny):
-                prob_mat[i, (j + 1) % self.Ny] = (
-                    probStar[i, (j + 1) % self.Ny]
-                    - (self.dt / self.dy) * (
-                        forceFunc_y(self.xArray[i], self.yArray[(j + 1) % self.Ny] + 0.5 * self.dy, par_y)
-                        * halfStep[i, (j + 1) % self.Ny]
-                        - forceFunc_y(self.xArray[i], self.yArray[j] + 0.5 * self.dy, par_y)
-                        * halfStep[i, j]
-                    )
-                )
-
-        # And resolve the boundary conditions for the full y-updates
-        # for i in range(self.Nx):
-        #    prob_mat[i,0] = probStar[i,0] - (self.dt/self.dy)*(forceFunc_y(self.xArray[i],
-        # self.yArray[0]+0.5*self.dy,par_y)*halfStep[i,0] - forceFunc_y(self.xArray[i],
-        # self.yArray[-1]+0.5*self.dy,par_y)*halfStep[i,-1])
-
-        self.dt = tempdt
-        # Update self.prob vector with result
-        self.prob = np.reshape(prob_mat, self.Nx * self.Ny)
-
-    # TODO write out hese routines
-    def lax_wendroff(self):
-        pass
-
-    def _calcFlux_laxWendroff(self):
-        pass
-
-    def _getFluxDiff_laxWendroff(self):
-        pass
+    def flux_step(
+        self, force_params: Tuple, force_x: Callable, force_y: Callable
+    ):
+        fx, fy = self._force_fields(force_x, force_y, force_params)
+        grid = self.prob_grid
+        dp_dx, dp_dy = np.gradient(grid, self.dx, self.dy)
+        self.flux_x = self.D * fx * grid - self.D * dp_dx
+        self.flux_y = self.D * fy * grid - self.D * dp_dy
+        vol = self._cell_volume()
+        self.flux_tracker = np.array([
+            np.sum(self.flux_x) * vol,
+            np.sum(self.flux_y) * vol,
+        ])
+        self.integrate_step(force_params, force_x, force_y)
 
 
-if __name__ == "__main__":
-    D = 1.0
-    dt = 0.01
-    dx = 0.1
-    dy = 0.1
-    xArray = np.arange(-1, 1, dx)
-    yArray = np.arange(-1, 1, dy)
-
-    fpe = FPE_integrator_2D(D, dt, dx, dy, xArray, yArray)
-
-
-    fpe = FPE_integrator_2D(1.0, dt, dx, dy, xArray, yArray)
-
+FPE_integrator_2D = FokkerPlanck2D

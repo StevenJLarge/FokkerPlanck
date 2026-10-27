@@ -218,12 +218,14 @@ class DynamicSimulator1D(Simulator1D):
         self.fpe.init_physical_trackers()
 
         for i, p in enumerate(protocol[:-1]):
-            if i % 10 == 0:
-                prob_tracker.append(self.fpe.prob)
+            if i % self.tracking_stride == 0:
+                prob_tracker.append(self.fpe.prob.copy())
                 time_tracker.append(self.time_array[i])
                 cp_tracker.append(p)
 
             self.update(p, protocol[i+1])
+
+        self.time_tracker = time_tracker
 
         return SimulationResult(
             self, prob_tracker, time_tracker, sim_type='dynamic',

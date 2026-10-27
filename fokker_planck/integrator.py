@@ -147,7 +147,7 @@ class FokkerPlanck1D(Integrator):
             params (Optional[Tuple], optional): Tuple of parameters for the
                 input probability function. Defaults to None.
         """
-        self.prob = func(self.x_array, *params)
+        self.prob = func(self.x_array, *(params or ()))
         self.prob = self.prob / (sum(self.prob) * self.dx)
 
     def check_CFL(self, force_params: Tuple, force_function: Callable) -> bool:
@@ -352,7 +352,7 @@ class FokkerPlanck1D(Integrator):
         # flux as a function of position
         self.flux = (
             self.D * force_function(self.x_array, force_params) * self.prob
-            - self.D * np.gradient(self.prob)
+            - self.D * np.gradient(self.prob, self.dx)
         )
         # Calculate integrated (net) flux over current configuration
         self.flux_tracker = sum(self.flux) * self.dx
@@ -461,11 +461,12 @@ class FokkerPlanck1D(Integrator):
             half_flux[-1] = force_function(self.x_array[-1] + 0.5 * self.dx, force_params) * half_prob[-1]
 
         else:
-            # Hard wall boundaries
-            half_prob[0] = 0.5 * self.prob[0]
-            half_prob[-1] = 0.5 * self.prob[-1]
-            half_flux[0] = force_function(self.x_array[0] - 0.5 * self.dx, force_params) * half_prob[0]
-            half_flux[-1] = force_function(self.x_array[-1] + 0.5 * self.dx, force_params) * half_prob[-1]
+            # Hard-wall / no-flux: the finite-volume update conserves mass iff
+            # the numerical flux at both domain edges is identically zero.
+            # Previously these faces used F * (0.5 p_boundary), which allowed
+            # probability to leave and relied on a later renormalization.
+            half_flux[0] = 0.0
+            half_flux[-1] = 0.0
 
         return half_flux
 

@@ -261,7 +261,10 @@ class Integrator(ABC):
         else:
             self._integrate_step_strang(force_params, force_function)
 
-        self.normalize_prob()
+        # Open boundaries are allowed to exchange probability with the exterior.
+        # Renormalizing after the step would put that mass back into the domain.
+        if self.BC is not BoundaryCondition.Open:
+            self.normalize_prob()
 
     def _integrate_step_lie(self, force_params: Tuple, force_function: Callable):
         """Implementation of Lie splitting update of FPE

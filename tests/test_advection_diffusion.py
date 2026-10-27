@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 
 from fokker_planck.integrator import FokkerPlanck1D
-from fokker_planck.types.basetypes import BoundaryCondition
+from fokker_planck.types.basetypes import BoundaryCondition, SplitMethod
 import fokker_planck.forceFunctions as ff
 
 # Testing suite: because the majority of the raw initialization and error
@@ -96,6 +96,32 @@ def test_variance_relaxation_harmonic(k_trap, D_input):
 
     # Assert
     assert (np.abs(theory_variance - variance_tracker) < 1e-2).all()
+
+
+@pytest.mark.parametrize('split_method', [
+    SplitMethod.Lie,
+    SplitMethod.Strang,
+    SplitMethod.SymStrang,
+])
+def test_operator_splitting_methods_relax_and_conserve(split_method):
+    dx_local = 0.05
+    x_array_local = np.arange(-2, 1, dx_local)
+    k_trap = 8.0
+    fpe = FokkerPlanck1D(
+        1.0, dt, dx_local, x_array_local,
+        boundary_cond=BoundaryCondition.HardWall,
+        split_method=split_method,
+    )
+    fpe.initialize_probability(-1.0, 1 / k_trap)
+    mass0 = np.sum(fpe.prob * dx_local)
+    mean0 = fpe.mean
+
+    for _ in range(80):
+        fpe.integrate_step([k_trap, 0.0], ff.harmonic_force)
+
+    assert np.isclose(np.sum(fpe.prob * dx_local), mass0, atol=1e-8)
+    assert abs(fpe.mean) < abs(mean0)
+    assert fpe.mean > mean0
 
 
 if __name__ == "__main__":

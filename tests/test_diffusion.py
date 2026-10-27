@@ -92,7 +92,7 @@ def test_diffusion_relation(D):
         var_tracker.append(variance(fpe.prob, fpe.x_array))
         time_tracker.append(time)
 
-    Y = np.array(var_tracker) + init_var
+    Y = np.array(var_tracker) - var_tracker[0]
     X = np.array(time_tracker)
 
     diff_model = sm.OLS(Y, X)
@@ -102,3 +102,16 @@ def test_diffusion_relation(D):
 
     # Assert
     assert np.abs(empirical_slope - theory_slope) < error_tolerance
+
+
+def test_nonconstant_diffusion_update_preserves_mass():
+    fpe = FokkerPlanck1D(
+        D, dt, dx, x_array, const_diffusion=False,
+        boundary_cond=BoundaryCondition.Periodic,
+    )
+    fpe.initialize_probability(0, init_var)
+    mass0 = np.sum(fpe.prob * dx)
+
+    fpe.diffusion_update()
+
+    assert np.isclose(np.sum(fpe.prob * dx), mass0, atol=1e-10)
