@@ -129,8 +129,8 @@ class StaticSimulator1D(Simulator1D):
         self.check_cfl(self.force_params)
 
         for i, t in enumerate(time_array):
-            if i % self.tracking_stride:
-                prob_tracker.append(self.fpe.prob)
+            if i % self.tracking_stride == 0:
+                prob_tracker.append(self.fpe.prob.copy())
                 time_tracker.append(t)
             self.fpe.integrate_step(self.force_params, self.force_func)
 

@@ -38,7 +38,7 @@ class HarmonicEquilibrationSimulator(StaticSimulator1D):
             uni_prob = (np.ones(x_len) / ((x_len - 2) * self.fpe_args.dx))
             uni_prob[0] = 0
             uni_prob[-1] = 0
-            self.fpe_prob = uni_prob
+            self.fpe.prob = uni_prob
         else:
             if mean is None:
                 mean = self.force_params[1]
@@ -58,10 +58,12 @@ class PeriodicEquilibrationSimulator(StaticSimulator1D):
         if classification is None:
             x_len = len(self.fpe_args.x_array)
             uni_prob = np.ones(x_len) / (x_len * self.fpe_args.dx)
-            self.fpe_prob = uni_prob
+            self.fpe.prob = uni_prob
+            return
 
         if classification.lower() == 'gaussian':
             self.fpe.initialize_probability(**kwargs)
+            return
 
         raise NotImplementedError(
             f'Probability classificaition {classification} not recognized, '
@@ -137,7 +139,7 @@ class HarmonicTranslationSimulator(DynamicSimulator1D):
         params_bkw = ([self.trap_strength, 0, cp_vel, self.fpe.D])
         params_fwd = ([self.trap_strength, dlambda, cp_vel, self.fpe.D])
 
-        if not self.check_cfl(params_fwd, self.force_func):
+        if not self.check_cfl(params_fwd):
             raise ValueError('CFL not satisfied!')
 
         self.fpe.work_step(
